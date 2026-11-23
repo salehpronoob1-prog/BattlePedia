@@ -21,4 +21,8 @@ jobs:
         if: success()
         with:
           name: BattlePedia-jar
-          path: build/libs/*.jar
+          if-no-files-found: error
+          path: |
+            build/libs/battlepedia-*.jar
+            !build/libs/*-sources.jar
+            !build/libs/*-dev.jar
