@@ -7,7 +7,6 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
@@ -19,7 +18,7 @@ public final class BattlePediaClient implements ClientModInitializer {
   @Override public void onInitializeClient(){
     CatalogStore.INSTANCE.load();
     openKey=KeyBindingHelper.registerKeyBinding(new KeyBinding(
-      "key.battlepedia.open",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_B,
+      "key.battlepedia.open",GLFW.GLFW_KEY_B,
       new KeyBinding.Category(Identifier.of("battlepedia","general"))));
     ClientTickEvents.END_CLIENT_TICK.register(client->{
       while(openKey.wasPressed()) client.setScreen(new BattlePediaScreen());
