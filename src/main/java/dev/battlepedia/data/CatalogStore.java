@@ -25,7 +25,22 @@ public final class CatalogStore {
   public static Path importFile() { return dir().resolve("imports").resolve("pets.txt"); }
   public synchronized void load() {
     entries.clear();
-    if (!Files.exists(dataFile())) return;
+    // Create the directories on first launch, including in separate
+    // Modrinth instance folders. Existing catalogs are never overwritten.
+    try {
+      Files.createDirectories(importFile().getParent());
+      if (Files.notExists(dataFile())) {
+        try {
+          Files.writeString(dataFile(), "[]\n", StandardCharsets.UTF_8,
+              StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+        } catch (FileAlreadyExistsException ignored) {
+          // Another initialization created it; load that file normally.
+        }
+      }
+    } catch (IOException ex) {
+      LOG.error("Could not initialize BattlePedia config directory at " + dir(), ex);
+      return;
+    }
     try (var r = Files.newBufferedReader(dataFile(),StandardCharsets.UTF_8)) {
       List<CatalogEntry> all = GSON.fromJson(r, LIST_TYPE);
       if(all!=null) for(CatalogEntry e:all) if(valid(e)) entries.put(e.key(),e);
