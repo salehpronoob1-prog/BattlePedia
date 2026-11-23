@@ -25,6 +25,9 @@ public final class CatalogStore {
   public static Path importFile() { return dir().resolve("imports").resolve("pets.txt"); }
   public synchronized void load() {
     entries.clear();
+    // Ship the full wiki database with the mod, including first-time installs.
+    // Saved ItemStacks and player-head textures from the user's local database take precedence.
+    for (CatalogEntry builtin : WikiPreset.records()) entries.put(builtin.key(), builtin);
     // Create the directories on first launch, including in separate
     // Modrinth instance folders. Existing catalogs are never overwritten.
     try {
@@ -43,13 +46,20 @@ public final class CatalogStore {
     }
     try (var r = Files.newBufferedReader(dataFile(),StandardCharsets.UTF_8)) {
       List<CatalogEntry> all = GSON.fromJson(r, LIST_TYPE);
-      if(all!=null) for(CatalogEntry e:all) if(valid(e)) entries.put(e.key(),e);
+      if(all!=null) for(CatalogEntry e:all) if(valid(e)) {
+        String matched = WikiPreset.category(e.name, e.itemId, e.lore, e.category);
+        if (!matched.equals("Unsorted") && (e.category.equals("Unsorted") || (e.category.equals("Pets") && !matched.equals("Pets")))) e.category = matched;
+        entries.put(e.key(),e);
+      }
     } catch(Exception ex) { LOG.error("Catalog load failed; existing data was not modified",ex); }
   }
   private static boolean valid(CatalogEntry e) {
     return e!=null && e.name!=null && !e.name.isBlank() && e.category!=null && e.rarity!=null;
   }
   public synchronized int size(){ return entries.size(); }
+  public synchronized int sectionCount(String category){
+    return (int) entries.values().stream().filter(e -> e.category.equals(category)).map(CatalogEntry::baseName).distinct().count();
+  }
   public synchronized List<CatalogEntry> all(){ return new ArrayList<>(entries.values()); }
   public synchronized int merge(Collection<CatalogEntry> batch) throws IOException {
     int added=0;

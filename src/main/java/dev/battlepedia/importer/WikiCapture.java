@@ -39,20 +39,27 @@ public final class WikiCapture {
       ItemStack stack=slot.getStack();
       if(stack.isEmpty())continue;
       String id=Registries.ITEM.getId(stack.getItem()).toString();
-      if(id.endsWith("glass_pane")||id.equals("minecraft:barrier")||id.equals("minecraft:arrow"))continue;
+      if(id.endsWith("glass_pane")||id.equals("minecraft:barrier")||id.equals("minecraft:arrow")||id.equals("minecraft:structure_void"))continue;
       String name=stack.getName().getString();
       if(name.isBlank()||name.equalsIgnoreCase("Next Page")||name.equalsIgnoreCase("Previous Page")
-        ||name.equalsIgnoreCase("Close")||name.toLowerCase(java.util.Locale.ROOT).startsWith("search query"))continue;
+        ||name.equalsIgnoreCase("Close")||name.equalsIgnoreCase("Back")||name.equalsIgnoreCase("Locked Item!")||name.toLowerCase(java.util.Locale.ROOT).startsWith("search query"))continue;
       CatalogEntry entry=new CatalogEntry();
-      entry.name=name;entry.category=(category.equals("Unsorted") && title.contains("Wiki Database") && id.equals("minecraft:player_head"))?"Pets":category;
+      entry.name=name;
+      entry.category=category;
       entry.rarity=CatalogEntry.detectRarity(name);
       entry.itemId=id;entry.count=stack.getCount();entry.originalSlot=i;entry.source=title;
       LoreComponent lore=stack.get(DataComponentTypes.LORE);
       if(lore!=null)for(Text t:lore.lines())entry.lore.add(t.getString());
       if(entry.rarity.equals("Unknown"))for(String l:entry.lore){
-        String r=l.toUpperCase(java.util.Locale.ROOT).trim().matches("^(COMMON|UNCOMMON|RARE|EPIC|LEGENDARY|MYTHIC) PET.*")?CatalogEntry.detectRarity(l):"Unknown";
-        if(!r.equals("Unknown")){entry.rarity=r;break;}
+        String upper=l.toUpperCase(java.util.Locale.ROOT).trim();
+        if(upper.matches("^(COMMON|UNCOMMON|RARE|EPIC|LEGENDARY|MYTHIC|UNIQUE|SPECIAL)( DUNGEON| GUILD)? (SWORD|BOW|CROSSBOW|AXE|SHIELD|WAND|SCYTHE|PET|HELMET|CHESTPLATE|LEGGINGS|BOOTS|ACCESSORY|NECKLACE|CLOAK|BELT|GLOVES|PICKAXE|DRILL|FISHING ROD|ITEM).*")){
+          entry.rarity=CatalogEntry.detectRarity(upper); break;
+        }
       }
+      // The server calls every category Wiki Database. Match each actual item against
+      // the shipped name/material/lore index; explicit target is only a tie-breaker.
+      String matched=WikiPreset.category(name,id,entry.lore,category);
+      if(!matched.equals("Unsorted"))entry.category=matched;
       try{
         var ops=RegistryOps.of(JsonOps.INSTANCE,client.world.getRegistryManager());
         entry.stackJson=ItemStack.CODEC.encodeStart(ops,stack).result().map(Object::toString).orElse("");
@@ -61,7 +68,7 @@ public final class WikiCapture {
     }
     try{
       int added=CatalogStore.INSTANCE.merge(batch);
-      return "Saved "+batch.size()+" entries ("+added+" new) under "+category+" from "+title;
+      return "Saved "+batch.size()+" item stacks ("+added+" new) using wiki description matching; browse categories with B";
     }catch(IOException ex){return "Could not save catalog: "+ex.getMessage();}
   }
 }

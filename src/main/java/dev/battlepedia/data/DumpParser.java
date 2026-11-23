@@ -22,11 +22,11 @@ public final class DumpParser {
           title=header.length>1?header[1].replace("=====","").trim():"";
           continue;
         }
-        if(!line.startsWith("Slot "))continue;
+        if(!line.startsWith("Slot ") || title.equalsIgnoreCase("BattlePet Wiki"))continue;
         String[] bits=line.split("\\s*\\|\\s*",4);
         if(bits.length<3)continue;
         String name=bits[1].trim();
-        if(name.isEmpty()||name.equalsIgnoreCase("Close")||name.equalsIgnoreCase("Next Page")
+        if(name.isEmpty()||name.equalsIgnoreCase("Close")||name.equalsIgnoreCase("Back")||name.equalsIgnoreCase("Locked Item!")||name.equalsIgnoreCase("Next Page")
           ||name.equalsIgnoreCase("Previous Page")||name.toLowerCase(Locale.ROOT).startsWith("search query:"))continue;
         Matcher m=ITEM.matcher(bits[2]);
         if(!m.find())continue;
@@ -37,7 +37,6 @@ public final class DumpParser {
         entry.itemId=itemId;
         entry.count=m.group(2)==null?1:Integer.parseInt(m.group(2));
         entry.category=WikiCategories.fromTitle(title);
-        if(entry.category.equals("Unsorted") && itemId.equals("minecraft:player_head") && title.contains("Wiki Database"))entry.category="Pets";
         entry.rarity=CatalogEntry.detectRarity(name);
         entry.source=title;
         try{entry.originalSlot=Integer.parseInt(bits[0].replace("Slot","").trim());}
@@ -52,6 +51,12 @@ public final class DumpParser {
             if(!r.equals("Unknown")){entry.rarity=r;break;}
           }
         }
+        for (String l : entry.lore) {
+          if (entry.rarity.equals("Unknown") && l.toUpperCase(Locale.ROOT).matches("^(COMMON|UNCOMMON|RARE|EPIC|LEGENDARY|MYTHIC|UNIQUE|SPECIAL)( DUNGEON| GUILD)? (SWORD|BOW|CROSSBOW|AXE|SHIELD|WAND|SCYTHE|PET|HELMET|CHESTPLATE|LEGGINGS|BOOTS|ITEM|ACCESSORY).*"))
+            entry.rarity = CatalogEntry.detectRarity(l);
+        }
+        String matched = WikiPreset.category(entry.name, entry.itemId, entry.lore, entry.category);
+        if (!matched.equals("Unsorted")) entry.category = matched;
         entries.add(entry);
       }
     }

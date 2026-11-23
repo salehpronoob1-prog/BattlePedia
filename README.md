@@ -1,4 +1,4 @@
-# BattlePedia (Fabric 1.21.11)\n\n## New in v0.2: encyclopedia interface\n\nThe main GUI has been rebuilt with a translucent purple/blue theme matching the concept more closely. **Pets**, **Pet Items** and **Favorites** are pinned on the left, with expandable navigation for all other wiki categories. Browse a pet grid and click a pet to open its dedicated detail page with a larger native icon, individual rarity buttons, extracted stats and ability cards, source information, and the unmodified original wiki lore.\n\nYou can switch rarity on the detail page, use the global search in the sidebar, scroll panels independently, and save favorites locally. Missing player-head textures are a data limitation: press **O** in the real wiki GUI to capture the server's native player-head components. This is an actual GUI implementation but only CI compilation has been verified; please report any in-game issues.\n
+# BattlePedia (Fabric 1.21.11)\n\n## New in v0.3: complete offline wiki and refreshed GUI\n\nThe main GUI now uses high-contrast item cards, pixel-perfect native item icons, crisp unshadowed text, spacious search/navigation, and category-sensitive detail screens. The mod ships with 3,134 entries from the 82-page BattlePet wiki dump across 21 non-pet categories, in addition to existing locally saved pet data. No separate import is required for these built-in entries. **Pets**, **Pet Items** and **Favorites** are pinned on the left, with expandable navigation for all other wiki categories. Browse a pet grid and click a pet to open its dedicated detail page with a larger native icon, individual rarity buttons, extracted stats and ability cards, source information, and the unmodified original wiki lore.\n\nYou can switch rarity on the detail page, use the global search in the sidebar, scroll panels independently, and save favorites locally. Missing player-head textures are a data limitation: press **O** in the real wiki GUI to capture the server's native player-head components. This is an actual GUI implementation but only CI compilation has been verified; please report any in-game issues.\n
 
 Standalone, client-side BattlePet encyclopedia for Minecraft. No Meteor Client or server-side plugin required.
 
@@ -10,7 +10,7 @@ Standalone, client-side BattlePet encyclopedia for Minecraft. No Meteor Client o
 - Native Minecraft icon rendering and original lore descriptions.
 - Local JSON database; changes persist between sessions.
 - Press **O while the server's Wiki Database inventory is open** to capture the page without clicking any slots. The capture stores full ItemStack CODEC JSON (including profile data for custom player heads) when available.
-- Import a text dump via the **Import pets.txt** button.
+- Import additional text dumps via the **Import** button. Built-in wiki items are already available on first install.
 
 ## Install
 1. Download the compiled JAR from [GitHub Actions](../../actions), open the successful build, and download its `BattlePedia-jar` artifact.
@@ -33,10 +33,10 @@ The interface reads local files; **no cloud server, API keys, or online accounts
 - Pets can coexist/stack; **individual abilities** may have non-stacking restrictions.
 - Original ability text is preserved and displayed; scaling and damage formulas are not guessed.
 - Imported textual entries have default vanilla item icons. Exact head skins require in-game item component capture.
-- The importer does not download from the server or perform destructive GUI actions.
+- The importer does not download from the server or perform destructive GUI actions. Capture uses the preloaded name, material and lore index to classify weapons, armor and other items automatically. If the exact item occurs in multiple categories with indistinguishable descriptions, the selected category is used as a fallback.
 
 ## Limitations / development status
-This is an early working implementation. Compilation is checked through GitHub Actions, but gameplay testing on the BattlePet server is still needed. Crafting recipes, per-ability navigation, favorites, a 13-pet optimizer, and automatic wiki page traversal **are not implemented yet**. Category pages remain empty until their data has been imported. Do not interpret a successful CI build as proof that every feature in the roadmap is implemented.
+This is an early working implementation. Compilation is checked through GitHub Actions, but gameplay testing on the BattlePet server is still needed. Crafting recipes, per-ability navigation, favorites, a 13-pet optimizer, and automatic wiki page traversal **are not implemented yet**. The new 21 non-pet category pages are preloaded. Items locked behind your game progression are not invented and retain only the available wiki data. Do not interpret a successful CI build as proof that every feature in the roadmap is implemented.
 
 ## Build
 Java 21, Gradle and Fabric Loom. `gradle build` or run the included GitHub Actions workflow.

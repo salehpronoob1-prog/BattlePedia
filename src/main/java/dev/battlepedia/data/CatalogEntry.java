@@ -20,7 +20,7 @@ public final class CatalogEntry {
     public int count = 1;
 
     private static final Pattern COLOR = Pattern.compile("(?i)§[0-9a-fk-or]");
-    private static final Pattern RARITY = Pattern.compile("(?i)\\b(Mythic|Legendary|Epic|Rare|Uncommon|Common)\\b");
+    private static final Pattern RARITY = Pattern.compile("(?i)\\b(Mythic|Legendary|Epic|Rare|Uncommon|Common|Unique|Special)\\b");
 
     public String key() {
         return category.toLowerCase(Locale.ROOT) + "|" + baseName().toLowerCase(Locale.ROOT) + "|" + rarity.toLowerCase(Locale.ROOT);
