@@ -21,10 +21,10 @@ import java.util.*;
 final class PediaRenderer {
     private PediaRenderer() {}
 
-    private static final int PURPLE = 0xFFA879FF, BLUE = 0xFF78D5FF, GOLD = 0xFFFFAA00;
-    private static final int WHITE = 0xFFE9EEFF, MUTED = 0xFFACB5D3, GREEN = 0xFF55FF88;
-    private static final int SURFACE = 0xD51A1C36, TOP = 0xCC20183D, SIDEBAR = 0xE31C1536;
-    private static final int TILE = 0xD3222342, FRAME = 0xFF604582, EDGE = 0xFF44355D;
+    private static final int PURPLE = 0xFFBF83FF, BLUE = 0xFF65DBF8, GOLD = 0xFFFABF59;
+    private static final int WHITE = 0xFFF3F6FF, MUTED = 0xFF9BAAC4, GREEN = 0xFF70F0B3;
+    private static final int SURFACE = 0xF50D1428, TOP = 0xF41B1E37, SIDEBAR = 0xF0171932;
+    private static final int TILE = 0xF5232B45, FRAME = 0xFF67519A, EDGE = 0xFF394563;
     private static final Map<String, ItemStack> ICONS = new HashMap<>();
 
     record Nav(String label, String icon, String section, String group, int indent) {}
@@ -50,9 +50,10 @@ final class PediaRenderer {
 
     static void draw(BattlePediaScreen s, DrawContext ctx, int mouseX, int mouseY) {
         // Transparent on purpose: the world is visible through the dashboard.
-        ctx.fill(0, 0, s.width, s.height, 0x550A0C1D);
+        ctx.fill(0, 0, s.width, s.height, 0xC2080C1A);
         panel(ctx, s.left, s.top, s.widthPx, s.heightPx, SURFACE, 0xFF4D356E);
         ctx.fill(s.left + 1, s.top + 1, s.left + s.widthPx - 1, s.top + 4, PURPLE);
+        for (int i=0;i<9;i++) ctx.fill(s.mainX+i*8,s.top+5,s.mainX+i*8+3,s.top+7,0x554A90CF);
         sidebar(s, ctx, mouseX, mouseY);
         if (s.view == BattlePediaScreen.View.DETAIL) {
             detail(s, ctx, mouseX, mouseY);
@@ -69,15 +70,15 @@ final class PediaRenderer {
     private static void sidebar(BattlePediaScreen s, DrawContext ctx, int mx, int my) {
         TextRenderer font = s.getTextRenderer();
         int x = s.left, y = s.top, w = s.sideWidth, h = s.heightPx;
-        panel(ctx, x + 1, y + 5, w - 2, h - 6, SIDEBAR, 0xFF5E3582);
+        panel(ctx, x + 1, y + 5, w - 2, h - 6, SIDEBAR, 0xFF574580);
         ctx.fill(x + w - 2, y + 8, x + w, y + h - 5, 0xFF694589);
-        drawNative(ctx, vanilla("minecraft:creeper_spawn_egg"), x + 10, y + 14);
-        text(ctx, font, truncate(font, "BattlePedia", w - 38), x + 29, y + 12, WHITE);
-        text(ctx, font, "BATTLEPET WIKI", x + 11, y + 30, PURPLE);
-        ctx.fill(x + 10, y + 45, x + w - 10, y + 46, 0xFF563B79);
+        drawNative(ctx, vanilla("minecraft:nether_star"), x + 13, y + 17);
+        text(ctx, font, truncate(font, "BattlePedia", w - 46), x + 35, y + 14, WHITE);
+        text(ctx, font, "THE BATTLEPET COMPENDIUM", x + 13, y + 33, BLUE);
+        ctx.fill(x + 13, y + 49, x + w - 13, y + 50, 0xFF66558D);
         // Search field is positioned over the following space by Screen.init().
-        ctx.fill(x + 9, y + 54, x + w - 9, y + 77, 0xB60B0D22);
-        border(ctx, x + 9, y + 54, w - 18, 23, 0xFF665291);
+        ctx.fill(x + 12, y + 59, x + w - 12, y + 84, 0xF60B1024);
+        border(ctx, x + 12, y + 59, w - 24, 25, 0xFF7864A7);
 
         List<Nav> nav = new ArrayList<>();
         nav.add(new Nav("Home", "minecraft:compass", "Home", "", 0));
@@ -96,14 +97,14 @@ final class PediaRenderer {
             List.of("Pickaxes & Drills", "Fishing Rods", "Crafting Ingredients"));
         nav.add(new Nav("Unsorted", "minecraft:book", "Unsorted", "", 0));
 
-        int navY = y + 86, navBottom = y + h - 49, rowH = 25;
+        int navY = y + 94, navBottom = y + h - 46, rowH = 27;
         int capacity = Math.max(1, (navBottom - navY) / rowH);
         s.navScroll = Math.min(s.navScroll, Math.max(0, nav.size() - capacity));
         ctx.enableScissor(x + 4, navY, x + w - 4, navBottom);
         for (int i = s.navScroll; i < nav.size() && i < s.navScroll + capacity; i++) {
             final Nav item = nav.get(i);
             int drawY = navY + (i - s.navScroll) * rowH;
-            int tx = x + 6 + item.indent * 11, tw = w - 12 - item.indent * 11;
+            int tx = x + 9 + item.indent * 11, tw = w - 18 - item.indent * 11;
             boolean group = !item.group.isEmpty();
             boolean active = item.section.equals(s.section) && !group;
             boolean hover = inside(mx, my, tx, drawY, tw, 23);
@@ -116,7 +117,7 @@ final class PediaRenderer {
                 ctx.fill(tx, drawY + 22, tx + tw, drawY + 23, 0x663E345F);
             }
             drawNative(ctx, vanilla(item.icon), tx + 5, drawY + 4);
-            int textColor = active ? WHITE : (group ? 0xFFE4D5FF : MUTED);
+            int textColor = active ? WHITE : (group ? 0xFFDFDBFF : MUTED);
             text(ctx, font, truncate(font, item.label, tw - (group ? 37 : 24)),
                 tx + 24, drawY + 7, textColor);
             if (group) {
@@ -135,7 +136,7 @@ final class PediaRenderer {
                 + " / " + nav.size() + "  (scroll)", x + 12, navBottom + 5, MUTED);
         }
         ctx.fill(x + 9, y + h - 27, x + w - 9, y + h - 26, 0xFF4E3C6A);
-        text(ctx, font, "v0.2.1  |  Fabric", x + 11, y + h - 19, MUTED);
+        text(ctx, font, "v0.3  |  Offline wiki  |  Fabric", x + 13, y + h - 19, BLUE);
     }
 
     private static void addGroup(List<Nav> nav, String group, String icon, String expanded, List<String> children) {
@@ -148,24 +149,25 @@ final class PediaRenderer {
     private static void header(BattlePediaScreen s, DrawContext ctx, String breadcrumb, boolean back, int mx, int my) {
         int x = s.mainX, y = s.top + 7, w = s.mainWidth;
         TextRenderer font = s.getTextRenderer();
-        panel(ctx, x, y, w, 42, TOP, FRAME);
+        panel(ctx, x, y, w, 49, TOP, EDGE);
+        ctx.fill(x+1,y+1,x+4,y+48,PURPLE);
         if (back) {
-            action(s, ctx, x + 7, y + 7, 31, 27, "<", () -> {
+            action(s, ctx, x + 7, y + 11, 31, 27, "<", () -> {
                 s.view = BattlePediaScreen.View.BROWSE;
                 s.abilityScroll = 0;
                 s.loreScroll = 0;
             }, mx, my, false);
-            text(ctx, font, truncate(font, breadcrumb, w - 183), x + 47, y + 16, WHITE);
+            text(ctx, font, truncate(font, breadcrumb, w - 183), x + 47, y + 21, WHITE);
         } else {
-            text(ctx, font, truncate(font, breadcrumb, w - 183), x + 13, y + 16, WHITE);
+            text(ctx, font, truncate(font, breadcrumb, w - 183), x + 14, y + 21, WHITE);
         }
         if (s.view == BattlePediaScreen.View.DETAIL) {
             int fw = Math.min(99, Math.max(75, w / 6));
-            action(s, ctx, x + w - fw - 8, y + 8, fw, 25,
+            action(s, ctx, x + w - fw - 8, y + 12, fw, 25,
                 s.isFavorite() ? "* Favorited" : "* Favorite", s::toggleFavorite, mx, my, s.isFavorite());
         } else {
-            action(s, ctx, x + w - 115, y + 8, 51, 25, "Reload", s::reload, mx, my, false);
-            action(s, ctx, x + w - 60, y + 8, 53, 25, "Import", s::importTextDump, mx, my, false);
+            action(s, ctx, x + w - 115, y + 12, 51, 25, "Reload", s::reload, mx, my, false);
+            action(s, ctx, x + w - 60, y + 12, 53, 25, "Import", s::importTextDump, mx, my, false);
         }
     }
 
@@ -272,7 +274,7 @@ final class PediaRenderer {
             ctx.fill(x+inset+4,y+inset+4,x+w-inset-4,y+inset+5,
                 (Math.max(0,30-stripe*2) << 24) | 0x00A879FF);
         }
-        int iconScale = Math.max(2,Math.min(4, (w - 26) / 16));
+        int iconScale = Math.max(2,Math.min(3, (w - 26) / 16));
         int iconWidth = iconScale * 16;
         drawLarge(ctx,icon(current),x+(w-iconWidth)/2,y+Math.max(22,(bigHeight - 95)/2),iconScale);
         String name=truncate(font,current.baseName(),w-13);
@@ -280,14 +282,14 @@ final class PediaRenderer {
         LoreInfo info = analyze(current);
         String type = truncate(font,info.type(),w-14);
         text(ctx,font,type,x+(w-font.getWidth(type))/2,y+bigHeight-26,MUTED);
-        text(ctx,font,BattlePediaScreen.resolvedRarity(current)+" pet",
+        text(ctx,font,BattlePediaScreen.resolvedRarity(current)+" / "+current.category,
             x+8,y+bigHeight-13,rarityColor(BattlePediaScreen.resolvedRarity(current)));
 
         int infoTop=y+bigHeight+7;
         int infoHeight=Math.max(0,h-bigHeight-7);
         if(infoHeight<45)return;
         panel(ctx,x,infoTop,w,infoHeight,0xC11C1D38,EDGE);
-        text(ctx,font,"PET DETAILS",x+9,infoTop+10,PURPLE);
+        text(ctx,font,current.category.equals("Pets")?"PET PROFILE":"ITEM PROFILE",x+9,infoTop+10,PURPLE);
         ctx.fill(x+8,infoTop+25,x+w-8,infoTop+26,0xFF58446D);
         text(ctx,font,"Type",x+9,infoTop+35,MUTED);
         text(ctx,font,truncate(font,info.type(),w-48),x+43,infoTop+35,GREEN);
@@ -300,7 +302,7 @@ final class PediaRenderer {
         }
         if(infoHeight>135) {
             ctx.fill(x+8,infoTop+116,x+w-8,infoTop+117,0x88504470);
-            text(ctx,font,"* Abilities may not stack",x+9,infoTop+126,MUTED);
+            text(ctx,font,"Original wiki data",x+9,infoTop+126,BLUE);
         }
     }
 
@@ -362,12 +364,12 @@ final class PediaRenderer {
         int abilityHeight=y+h-abilityY;
         if(abilityHeight<30)return;
         panel(ctx,x,abilityY,w,abilityHeight,0xC31A1B35,FRAME);
-        text(ctx,font,"PET ABILITIES  ("+info.abilities().size()+")",x+11,abilityY+10,PURPLE);
+        text(ctx,font,(current.category.equals("Pets")?"PET ABILITIES":"ABILITIES")+"  ("+info.abilities().size()+")",x+11,abilityY+10,PURPLE);
         ctx.fill(x+9,abilityY+26,x+w-9,abilityY+27,0xFF604074);
         int startY=abilityY+33, clippingBottom=abilityY+abilityHeight-7;
         int contentY=startY-s.abilityScroll*18;
         ctx.enableScissor(x+3,startY,x+w-3,clippingBottom);
-        if(info.abilities().isEmpty())text(ctx,font,"No abilities recorded for this rarity",x+10,startY+8,MUTED);
+        if(info.abilities().isEmpty())text(ctx,font,"No active abilities recorded",x+10,startY+8,MUTED);
         for(Ability ability:info.abilities()){
             List<String> lines=new ArrayList<>();
             for(String part:ability.description()) {
@@ -424,7 +426,7 @@ final class PediaRenderer {
     private static int tooltipColor(String s){
         String value=s.toLowerCase(Locale.ROOT);
         if(value.contains("cannot be stacked"))return PURPLE;
-        if(value.startsWith("pet ability:"))return GOLD;
+        if(value.startsWith("pet ability:")||value.startsWith("item ability:")||value.startsWith("summon ability:"))return GOLD;
         if(value.startsWith("source npc")||value.contains("click to view"))return BLUE;
         if(value.contains("requires")||value.contains("hotbar")||value.contains("activate its abilities"))return 0xFFFFE078;
         if(value.matches("^(common|uncommon|rare|epic|legendary|mythic)( guild)? pet.*"))
@@ -434,7 +436,7 @@ final class PediaRenderer {
     }
 
     private static LoreInfo analyze(CatalogEntry entry) {
-        String type="Pet",source="Not recorded";
+        String type=entry.category.equals("Pets")?"Pet":"Item",source="Not recorded";
         List<String> stats=new ArrayList<>();
         List<Ability> abilities=new ArrayList<>();
         String currentName=null;
@@ -456,10 +458,10 @@ final class PediaRenderer {
             if(readingSource && !line.isEmpty() && line.startsWith("-")) {
                 source=line.replaceFirst("^-\\s*","").trim();readingSource=false;continue;
             }
-            if(lower.startsWith("pet ability:")){
+            if(lower.startsWith("pet ability:") || lower.startsWith("item ability:") || lower.startsWith("summon ability:")){
                 footer=false;
                 if(currentName!=null)abilities.add(new Ability(currentName,new ArrayList<>(abilityLines)));
-                currentName=line.substring("Pet Ability:".length()).trim();
+                currentName=line.substring(line.indexOf(':')+1).trim();
                 abilityLines.clear();
                 continue;
             }
@@ -514,7 +516,7 @@ final class PediaRenderer {
     }
 
     private static void text(DrawContext ctx,TextRenderer font,String str,int x,int y,int color){
-        ctx.drawTextWithShadow(font,str,x,y,color);
+        ctx.drawText(font,str,x,y,color,false);
     }
 
     private static String truncate(TextRenderer font,String str,int pixels){
@@ -547,6 +549,8 @@ final class PediaRenderer {
             case "Epic" -> 0xFFCC55FF;
             case "Legendary" -> 0xFFFFAA00;
             case "Mythic" -> 0xFFFF55FF;
+            case "Unique" -> 0xFF75DBFF;
+            case "Special" -> 0xFFFF6B8F;
             default -> MUTED;
         };
     }
@@ -571,7 +575,10 @@ final class PediaRenderer {
                     .result().orElse(ItemStack.EMPTY);
             }catch(Exception ignored){}
         }
-        if(stack.isEmpty())stack=vanilla(entry.itemId);
+        if(stack.isEmpty()){
+            stack=vanilla(entry.itemId);
+            if(entry.stackJson!=null&&!entry.stackJson.isBlank())return stack;
+        }
         ICONS.put(key,stack);
         return stack;
     }
