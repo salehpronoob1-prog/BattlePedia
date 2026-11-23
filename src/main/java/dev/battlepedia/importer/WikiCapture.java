@@ -38,12 +38,13 @@ public final class WikiCapture {
       if(name.isBlank()||name.equalsIgnoreCase("Next Page")||name.equalsIgnoreCase("Previous Page")
         ||name.equalsIgnoreCase("Close")||name.toLowerCase(java.util.Locale.ROOT).startsWith("search query"))continue;
       CatalogEntry entry=new CatalogEntry();
-      entry.name=name;entry.category=category;entry.rarity=CatalogEntry.detectRarity(name);
+      entry.name=name;entry.category=(category.equals("Unsorted") && title.contains("Wiki Database") && id.equals("minecraft:player_head"))?"Pets":category;
+      entry.rarity=CatalogEntry.detectRarity(name);
       entry.itemId=id;entry.count=stack.getCount();entry.originalSlot=i;entry.source=title;
       LoreComponent lore=stack.get(DataComponentTypes.LORE);
       if(lore!=null)for(Text t:lore.lines())entry.lore.add(t.getString());
       if(entry.rarity.equals("Unknown"))for(String l:entry.lore){
-        String r=CatalogEntry.detectRarity(l);
+        String r=l.toUpperCase(java.util.Locale.ROOT).trim().matches("^(COMMON|UNCOMMON|RARE|EPIC|LEGENDARY|MYTHIC) PET.*")?CatalogEntry.detectRarity(l):"Unknown";
         if(!r.equals("Unknown")){entry.rarity=r;break;}
       }
       try{
