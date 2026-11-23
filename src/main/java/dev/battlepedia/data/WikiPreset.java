@@ -28,7 +28,7 @@ public final class WikiPreset {
                         entry.category = columns[0]; entry.name = columns[1];
                         entry.rarity = columns[2]; entry.itemId = columns[3];
                         entry.source = "BattlePet Wiki / " + entry.category;
-                        entry.lore = new ArrayList<>(Arrays.asList(columns[4].split("\\u001f", -1)));
+                        entry.lore = new ArrayList<>(Arrays.asList(columns[4].split(String.valueOf((char)31), -1)));
                         list.add(entry);
                     }
                 }
