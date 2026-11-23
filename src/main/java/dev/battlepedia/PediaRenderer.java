@@ -1,7 +1,7 @@
 package dev.battlepedia;
 
 import com.google.gson.JsonParser;
-import com.google.gson.JsonOps;
+import com.mojang.serialization.JsonOps;
 import dev.battlepedia.data.*;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
