@@ -283,44 +283,47 @@ final class PediaRenderer {
     private static void portrait(BattlePediaScreen s, DrawContext ctx, CatalogEntry current,
                                  int x, int y, int w, int h) {
         TextRenderer font = s.getTextRenderer();
-        int bigHeight = Math.max(116, Math.min(227, (int)(h * 0.59)));
-        panel(ctx,x,y,w,bigHeight,0xD622173E,0xFF9958CB);
-        // Subtle luminous stripes instead of an opaque artwork or fake item texture.
-        for (int stripe = 0; stripe < 12; stripe++) {
-            int inset = stripe * 3;
-            if (inset * 2 >= w - 12) break;
-            ctx.fill(x+inset+4,y+inset+4,x+w-inset-4,y+inset+5,
-                (Math.max(0,30-stripe*2) << 24) | 0x00A879FF);
-        }
-        int iconScale = Math.max(2,Math.min(3, (w - 26) / 16));
-        int iconWidth = iconScale * 16;
-        drawLarge(ctx,icon(current),x+(w-iconWidth)/2,y+Math.max(22,(bigHeight - 95)/2),iconScale);
-        String name=truncate(font,current.baseName(),w-13);
-        text(ctx,font,name,x+(w-font.getWidth(name))/2,y+bigHeight-43,WHITE);
-        LoreInfo info = analyze(current);
-        String type = truncate(font,info.type(),w-14);
-        text(ctx,font,type,x+(w-font.getWidth(type))/2,y+bigHeight-26,MUTED);
-        text(ctx,font,BattlePediaScreen.resolvedRarity(current)+" / "+current.category,
-            x+8,y+bigHeight-13,rarityColor(BattlePediaScreen.resolvedRarity(current)));
+        int rarity=rarityColor(BattlePediaScreen.resolvedRarity(current));
+        int heroH=Math.max(150,Math.min(220,(int)(h*0.58)));
+        panel(ctx,x,y,w,heroH,0xEF17172F,FRAME);
+        ctx.fill(x+1,y+1,x+w-1,y+4,rarity);
+        text(ctx,font,truncate(font,current.category.toUpperCase(Locale.ROOT),w-20),
+            x+10,y+14,BLUE);
+        // Crisp native ItemStack portrait, framed separately from the background.
+        int well=Math.min(105,Math.max(69,w-32));
+        int wellX=x+(w-well)/2,wellY=y+33;
+        panel(ctx,wellX,wellY,well,well,0xF40C1328,0xFF76589A);
+        for(int i=1;i<=4;i++)
+            border(ctx,wellX+i*3,wellY+i*3,well-i*6,well-i*6,0x222F86E0);
+        int zoom=Math.min(3,Math.max(2,(well-16)/16));
+        int px=wellX+(well-zoom*16)/2,py=wellY+(well-zoom*16)/2;
+        drawLarge(ctx,icon(current),px,py,zoom);
+        int labelY=Math.min(y+heroH-48,wellY+well+10);
+        String name=truncate(font,current.baseName(),w-14);
+        text(ctx,font,name,x+(w-font.getWidth(name))/2,labelY,WHITE);
+        String rarityName=BattlePediaScreen.resolvedRarity(current);
+        text(ctx,font,rarityName.toUpperCase(Locale.ROOT),x+10,y+heroH-20,rarity);
+        text(ctx,font,"WIKI ENTRY",x+w-Math.min(w-10,font.getWidth("WIKI ENTRY")+10),y+heroH-20,MUTED);
 
-        int infoTop=y+bigHeight+7;
-        int infoHeight=Math.max(0,h-bigHeight-7);
-        if(infoHeight<45)return;
-        panel(ctx,x,infoTop,w,infoHeight,0xC11C1D38,EDGE);
-        text(ctx,font,current.category.equals("Pets")?"PET PROFILE":"ITEM PROFILE",x+9,infoTop+10,PURPLE);
-        ctx.fill(x+8,infoTop+25,x+w-8,infoTop+26,0xFF58446D);
-        text(ctx,font,"Type",x+9,infoTop+35,MUTED);
-        text(ctx,font,truncate(font,info.type(),w-48),x+43,infoTop+35,GREEN);
-        ctx.fill(x+8,infoTop+48,x+w-8,infoTop+49,0x88504470);
-        text(ctx,font,"Source",x+9,infoTop+58,MUTED);
-        for(int i=0;i<2;i++){
-            List<String> sourceLines=wrap(font,info.source(),Math.max(35,w-16));
-            if(i<sourceLines.size()&&infoTop+73+i*12<infoTop+infoHeight-6)
-                text(ctx,font,sourceLines.get(i),x+9,infoTop+73+i*12,BLUE);
+        int infoTop=y+heroH+8,infoH=h-heroH-8;
+        if(infoH<45)return;
+        panel(ctx,x,infoTop,w,infoH,0xEA1B213B,EDGE);
+        LoreInfo info=analyze(current);
+        text(ctx,font,current.category.equals("Pets")?"PET PROFILE":"ITEM PROFILE",x+10,infoTop+13,PURPLE);
+        ctx.fill(x+10,infoTop+30,x+w-10,infoTop+31,0xFF44516B);
+        text(ctx,font,"CLASSIFICATION",x+10,infoTop+39,MUTED);
+        text(ctx,font,truncate(font,info.type(),w-20),x+10,infoTop+55,WHITE);
+        if(infoH>93){
+            ctx.fill(x+10,infoTop+79,x+w-10,infoTop+80,0x9944516B);
+            text(ctx,font,"WHERE TO GET IT",x+10,infoTop+88,MUTED);
+            List<String> lines=wrap(font,info.source(),Math.max(50,w-20));
+            for(int i=0;i<Math.min(3,lines.size());i++)
+                if(infoTop+104+i*13<infoTop+infoH-5)
+                    text(ctx,font,lines.get(i),x+10,infoTop+104+i*13,BLUE);
         }
-        if(infoHeight>135) {
-            ctx.fill(x+8,infoTop+116,x+w-8,infoTop+117,0x88504470);
-            text(ctx,font,"Original wiki data",x+9,infoTop+126,BLUE);
+        if(infoH>166){
+            ctx.fill(x+10,infoTop+154,x+w-10,infoTop+155,0x9944516B);
+            text(ctx,font,"LOCAL OFFLINE REFERENCE",x+10,infoTop+163,GREEN);
         }
     }
 
