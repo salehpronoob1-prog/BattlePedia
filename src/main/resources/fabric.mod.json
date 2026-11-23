@@ -3,7 +3,7 @@
   "id": "battlepedia",
   "version": "${version}",
   "name": "BattlePedia",
-  "description": "Transparent BattlePet encyclopedia with rarity navigation.",
+  "description": "Fantasy-styled BattlePet encyclopedia with original wiki data, rarity views and native item capture.",
   "environment": "client",
   "entrypoints": { "client": ["dev.battlepedia.BattlePediaClient"] },
   "depends": { "fabricloader": ">=0.18.0", "minecraft": "~1.21.11", "java": ">=21", "fabric-api": "*" }
