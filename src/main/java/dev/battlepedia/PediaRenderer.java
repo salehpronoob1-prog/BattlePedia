@@ -196,48 +196,66 @@ final class PediaRenderer {
     private static void browser(BattlePediaScreen s, DrawContext ctx, int mx, int my) {
         List<CatalogEntry> items = s.browserEntries();
         String title = s.query.isBlank() ? s.section : "Search / " + s.query;
-        header(s, ctx, title + "  /  " + items.size() + " entries", false, mx, my);
+        header(s, ctx, title + "   /   " + items.size() + " ITEMS", false, mx, my);
         int x = s.mainX, y = s.bodyTop, w = s.mainWidth, h = s.bodyBottom - y;
         TextRenderer font = s.getTextRenderer();
-        panel(ctx, x, y, w, h, 0xB3181B33, EDGE);
-        text(ctx, font, s.section.equals("Pets") ? "PET COLLECTION" : "ENCYCLOPEDIA COLLECTION", x + 12, y + 11, BLUE);
-        text(ctx, font, truncate(font, "Capture target: " + dev.battlepedia.importer.WikiCapture.selectedCategory() + "  |  Open /wiki and press O", w - 24),
-            x + 12, y + 27, MUTED);
+        panel(ctx, x, y, w, h, 0xEB151D35, EDGE);
+        ctx.fill(x+1,y+1,x+w-1,y+3,0xFF387CBA);
+        text(ctx, font, s.section.equals("Pets") ? "YOUR PET COMPENDIUM" : s.section.toUpperCase(Locale.ROOT) + "  /  INDEX",
+            x + 15, y + 13, BLUE);
+        String hint = items.size() + " indexed entries | Open a card for stats, abilities and original tooltip";
+        text(ctx,font,truncate(font,hint,w-30),x+15,y+32,MUTED);
+        ctx.fill(x+13,y+49,x+w-13,y+50,0xFF33425F);
 
-        int cols = w >= 520 ? 4 : w >= 370 ? 3 : w >= 245 ? 2 : 1;
-        int gap = 7, cardWidth = (w - 24 - gap * (cols - 1)) / cols;
-        int cardHeight = 78;
-        int listTop = y + 50, listBottom = y + h - 9;
-        int visibleRows = Math.max(1, (listBottom - listTop + gap) / (cardHeight + gap));
-        int totalRows = (items.size() + cols - 1) / cols;
-        s.browserScroll = Math.min(s.browserScroll, Math.max(0, totalRows - visibleRows));
-        ctx.enableScissor(x + 6, listTop, x + w - 6, listBottom);
-        for (int row = s.browserScroll; row < totalRows && row < s.browserScroll + visibleRows; row++) {
-            for (int col = 0; col < cols; col++) {
-                int index = row * cols + col;
-                if (index >= items.size()) break;
-                final CatalogEntry entry = items.get(index);
-                int cx = x + 12 + col * (cardWidth + gap);
-                int cy = listTop + (row - s.browserScroll) * (cardHeight + gap);
-                boolean hover = inside(mx, my, cx, cy, cardWidth, cardHeight);
-                panel(ctx, cx, cy, cardWidth, cardHeight, hover ? 0xE03D305E : TILE, hover ? PURPLE : EDGE);
-                int rarity = rarityColor(BattlePediaScreen.resolvedRarity(entry));
-                ctx.fill(cx + 1, cy + 1, cx + cardWidth - 1, cy + 3, rarity);
-                drawLarge(ctx, icon(entry), cx + cardWidth / 2 - 16, cy + 10, 2);
-                String name = truncate(font, entry.baseName(), cardWidth - 10);
-                text(ctx, font, name, cx + (cardWidth - font.getWidth(name)) / 2, cy + 49, WHITE);
-                String label = BattlePediaScreen.resolvedRarity(entry);
-                text(ctx, font, label, cx + (cardWidth - font.getWidth(label)) / 2, cy + 62, rarity);
-                s.hit(cx, cy, cardWidth, cardHeight, () -> s.chooseEntry(entry));
+        int cols = w >= 760 ? 3 : w >= 390 ? 2 : 1;
+        int gap = 10, cardWidth = (w - 30 - gap * (cols - 1)) / cols;
+        int cardHeight = 102;
+        int listTop = y + 60, listBottom = y + h - 19;
+        int totalRows = (items.size()+cols-1)/cols;
+        int visibleRows = Math.max(1, (listBottom-listTop+gap)/(cardHeight+gap));
+        s.browserScroll = Math.min(s.browserScroll, Math.max(0,totalRows-visibleRows));
+        ctx.enableScissor(x+5,listTop,x+w-5,listBottom);
+        for(int row=s.browserScroll;row<totalRows && row<s.browserScroll+visibleRows;row++){
+            for(int col=0;col<cols;col++){
+                int index=row*cols+col;
+                if(index>=items.size())break;
+                CatalogEntry entry=items.get(index);
+                int cx=x+15+col*(cardWidth+gap);
+                int cy=listTop+(row-s.browserScroll)*(cardHeight+gap);
+                boolean hover=inside(mx,my,cx,cy,cardWidth,cardHeight);
+                int rarity=rarityColor(BattlePediaScreen.resolvedRarity(entry));
+                panel(ctx,cx,cy,cardWidth,cardHeight,hover?0xFF35415D:TILE,hover?PURPLE:EDGE);
+                ctx.fill(cx+1,cy+1,cx+cardWidth-1,cy+3,rarity);
+                panel(ctx,cx+11,cy+13,48,48,0xF70E172C,hover?0xFF7063A1:0xFF46546F);
+                // Render genuine ItemStacks at an exact 2x pixel scale: no blurry thumbnails.
+                drawLarge(ctx,icon(entry),cx+19,cy+21,2);
+                String name=entry.baseName();
+                int nameX=cx+69;
+                text(ctx,font,truncate(font,name,Math.max(40,cardWidth-82)),nameX,cy+20,WHITE);
+                text(ctx,font,BattlePediaScreen.resolvedRarity(entry).toUpperCase(Locale.ROOT),
+                    nameX,cy+38,rarity);
+                ctx.fill(cx+10,cy+69,cx+cardWidth-10,cy+70,0xAA41506C);
+                String stat=firstStat(entry);
+                text(ctx,font,truncate(font,stat.isBlank()?"VIEW ITEM DETAILS":stat,cardWidth-35),cx+11,cy+80,
+                    stat.isBlank()?MUTED:GREEN);
+                text(ctx,font,">",cx+cardWidth-18,cy+80,hover?WHITE:BLUE);
+                s.hit(cx,cy,cardWidth,cardHeight,()->s.chooseEntry(entry));
             }
         }
         ctx.disableScissor();
-        if (items.isEmpty()) {
-            text(ctx, font, "No entries found in this category yet.", x + 19, listTop + 15, WHITE);
-            text(ctx, font, "Capture wiki pages with O, or import a text dump.", x + 19, listTop + 31, MUTED);
+        if(items.isEmpty()){
+            text(ctx,font,"Nothing indexed here yet",x+20,listTop+20,WHITE);
+            text(ctx,font,"Open /wiki and press O, or search for another item.",x+20,listTop+39,MUTED);
         }
-        text(ctx, font, "Scroll for more  |  " + items.size() + " unique entries",
-            x + 12, y + h - 8, MUTED);
+        String info = items.size()+" items  /  "+Math.max(1,totalRows)+" rows  /  Scroll to browse";
+        text(ctx,font,truncate(font,info,w-24),x+15,y+h-13,MUTED);
+    }
+
+    private static String firstStat(CatalogEntry e) {
+        if(e.lore==null)return "";
+        for(String key:List.of("Damage:","Health:","Defense:","Strength:","Ferocity:","Intelligence:","Crit Damage:","Magic Find:"))
+            for(String line:e.lore) if(line.startsWith(key))return line;
+        return "";
     }
 
     private static void detail(BattlePediaScreen s, DrawContext ctx, int mx, int my) {
