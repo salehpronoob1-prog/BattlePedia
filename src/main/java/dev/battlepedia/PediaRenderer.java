@@ -135,7 +135,7 @@ final class PediaRenderer {
                 + " / " + nav.size() + "  (scroll)", x + 12, navBottom + 5, MUTED);
         }
         ctx.fill(x + 9, y + h - 27, x + w - 9, y + h - 26, 0xFF4E3C6A);
-        text(ctx, font, "v0.2  |  Fabric 1.21.11", x + 11, y + h - 19, MUTED);
+        text(ctx, font, "v0.2.1  |  Fabric", x + 11, y + h - 19, MUTED);
     }
 
     private static void addGroup(List<Nav> nav, String group, String icon, String expanded, List<String> children) {
@@ -199,7 +199,7 @@ final class PediaRenderer {
         TextRenderer font = s.getTextRenderer();
         panel(ctx, x, y, w, h, 0xB3181B33, EDGE);
         text(ctx, font, s.section.equals("Pets") ? "PET COLLECTION" : "ENCYCLOPEDIA COLLECTION", x + 12, y + 11, BLUE);
-        text(ctx, font, "Select an entry for stats, abilities, rarity variants and original tooltip",
+        text(ctx, font, truncate(font, "Capture target: " + dev.battlepedia.importer.WikiCapture.selectedCategory() + "  |  Open /wiki and press O", w - 24),
             x + 12, y + 27, MUTED);
 
         int cols = w >= 520 ? 4 : w >= 370 ? 3 : w >= 245 ? 2 : 1;
