@@ -457,7 +457,7 @@ final class PediaRenderer {
     }
 
     private static LoreInfo analyze(CatalogEntry entry) {
-        String type=entry.category.equals("Pets")?"Pet":"Item",source="Not recorded";
+        String type=entry.category.equals("Pets")?"Pet":"Item",source="See original tooltip";
         List<String> stats=new ArrayList<>();
         List<Ability> abilities=new ArrayList<>();
         String currentName=null;
@@ -470,9 +470,14 @@ final class PediaRenderer {
             String lower=line.toLowerCase(Locale.ROOT);
             if(line.endsWith(" Pet")&&!line.toUpperCase(Locale.ROOT).matches("^(COMMON|UNCOMMON|RARE|EPIC|LEGENDARY|MYTHIC)( GUILD)? PET$")
                 && type.equals("Pet"))type=line;
-            if(lower.startsWith("source npc:")) {
+            if(!entry.category.equals("Pets") && line.toUpperCase(Locale.ROOT).matches("^(COMMON|UNCOMMON|RARE|EPIC|LEGENDARY|MYTHIC|UNIQUE|SPECIAL)( DUNGEON)? [A-Z ]+$")) {
+                String[] fragments=line.trim().split(" ");
+                type=fragments[fragments.length-1].substring(0,1).toUpperCase(Locale.ROOT)
+                    +fragments[fragments.length-1].substring(1).toLowerCase(Locale.ROOT);
+            }
+            if(lower.startsWith("source npc:") || lower.startsWith("dropped by:") || lower.startsWith("slayer sources:")) {
                 readingSource=true;footer=true;
-                String remainder=line.substring("Source NPC:".length()).trim();
+                String remainder=line.substring(line.indexOf(':')+1).trim();
                 if(!remainder.isEmpty())source=remainder;
                 continue;
             }
