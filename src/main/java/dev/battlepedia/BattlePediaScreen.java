@@ -32,6 +32,8 @@ public final class BattlePediaScreen extends Screen {
     String selectedRarity = "";
     String notice = "Browse the BattlePet encyclopedia";
     int navScroll = 0, browserScroll = 0, abilityScroll = 0, loreScroll = 0;
+    boolean maximized = false;
+    boolean mobileLore = false;
     int left, top, widthPx, heightPx, sideWidth, mainX, mainWidth, headerHeight, bodyTop, bodyBottom;
     private TextFieldWidget search;
 
@@ -42,21 +44,11 @@ public final class BattlePediaScreen extends Screen {
 
     @Override
     protected void init() {
-        left = 10;
-        top = 10;
-        widthPx = Math.max(250, width - 20);
-        heightPx = Math.max(170, height - 20);
-        sideWidth = Math.max(164, Math.min(204, widthPx / 4));
-        mainX = left + sideWidth + 10;
-        mainWidth = left + widthPx - mainX - 9;
-        headerHeight = 56;
-        bodyTop = top + headerHeight + 6;
-        bodyBottom = top + heightPx - 25;
-
-        // Search stays in the sidebar rather than stealing the catalog header.
-        search = new TextFieldWidget(textRenderer, left + 13, top + 61,
-            sideWidth - 26, 21, Text.literal("Search BattlePedia"));
-        search.setPlaceholder(Text.literal("Search items..."));
+        updateLayout();
+        search = new TextFieldWidget(textRenderer, left + 30, top + 18,
+            sideWidth - 44, 17, Text.literal("Search BattlePedia"));
+        search.setPlaceholder(Text.literal("Search wiki..."));
+        search.setDrawsBackground(false);
         search.setMaxLength(128);
         search.setText(query);
         search.setChangedListener(value -> {
@@ -67,6 +59,34 @@ public final class BattlePediaScreen extends Screen {
             }
         });
         addDrawableChild(search);
+    }
+
+    private void updateLayout() {
+        left = maximized ? 2 : 7;
+        top = maximized ? 29 : Math.min(46, Math.max(34, height / 10));
+        widthPx = Math.max(254, width - left * 2);
+        heightPx = Math.max(165, height - top - (maximized ? 2 : 7));
+        sideWidth = Math.max(136, Math.min(183, (int)(widthPx * 0.195)));
+        mainX = left + sideWidth + 9;
+        mainWidth = left + widthPx - mainX - 1;
+        headerHeight = 34;
+        bodyTop = top + headerHeight + 5;
+        bodyBottom = top + heightPx - 3;
+    }
+
+    void toggleMaximized() {
+        maximized = !maximized;
+        updateLayout();
+        if (search != null) {
+            search.setPosition(left + 30, top + 18);
+            search.setWidth(sideWidth - 44);
+        }
+    }
+
+    void showLoreOnCompact(boolean visible) {
+        mobileLore = visible;
+        abilityScroll = 0;
+        loreScroll = 0;
     }
 
     void hit(int x, int y, int w, int h, Runnable action) {
@@ -85,6 +105,7 @@ public final class BattlePediaScreen extends Screen {
         browserScroll = 0;
         abilityScroll = 0;
         loreScroll = 0;
+        mobileLore = false;
         query = "";
         if (search != null) search.setText("");
     }
@@ -95,6 +116,7 @@ public final class BattlePediaScreen extends Screen {
         view = View.DETAIL;
         abilityScroll = 0;
         loreScroll = 0;
+        mobileLore = false;
     }
 
     void chooseRarity(String rarity) {
@@ -234,7 +256,10 @@ public final class BattlePediaScreen extends Screen {
         }
         if (view == View.DETAIL && my >= bodyTop && my < bodyBottom) {
             int centerRight = PediaRenderer.detailCenterRight(this);
-            if (mx < centerRight) abilityScroll = Math.max(0, abilityScroll + amount);
+            if (PediaRenderer.compactDetail(this)) {
+                if (mobileLore) loreScroll = Math.max(0, loreScroll + amount);
+                else abilityScroll = Math.max(0, abilityScroll + amount);
+            } else if (mx < centerRight) abilityScroll = Math.max(0, abilityScroll + amount);
             else loreScroll = Math.max(0, loreScroll + amount);
             return true;
         }
