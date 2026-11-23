@@ -18,11 +18,17 @@ import java.util.List;
 /** Captures real GUI ItemStacks without clicking server menus or sending packets. */
 public final class WikiCapture {
   private WikiCapture(){}
+  private static String selectedCategory = "Unsorted";
+  public static void setCategory(String category) {
+    if (WikiCategories.ALL.stream().anyMatch(c -> c.name().equals(category))) selectedCategory = category;
+  }
+  public static String selectedCategory() { return selectedCategory; }
   public static String capture(MinecraftClient client) {
     if(client.world==null||client.player==null||!(client.currentScreen instanceof HandledScreen<?> screen))
       return "Open a BattlePet wiki inventory first.";
     String title=screen.getTitle().getString();
-    String category=WikiCategories.fromTitle(title);
+    String detected=WikiCategories.fromTitle(title);
+    String category = !selectedCategory.equals("Unsorted") ? selectedCategory : detected;
     // The top-level wiki is navigation, not catalog data.
     if(title.equalsIgnoreCase("BattlePet Wiki"))return "Open a category before capturing.";
     List<CatalogEntry> batch=new ArrayList<>();
@@ -55,7 +61,7 @@ public final class WikiCapture {
     }
     try{
       int added=CatalogStore.INSTANCE.merge(batch);
-      return "Captured "+batch.size()+" entries ("+added+" new) from "+title;
+      return "Saved "+batch.size()+" entries ("+added+" new) under "+category+" from "+title;
     }catch(IOException ex){return "Could not save catalog: "+ex.getMessage();}
   }
 }
