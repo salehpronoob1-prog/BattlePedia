@@ -37,6 +37,7 @@ public final class DumpParser {
         entry.itemId=itemId;
         entry.count=m.group(2)==null?1:Integer.parseInt(m.group(2));
         entry.category=WikiCategories.fromTitle(title);
+        if(entry.category.equals("Unsorted") && itemId.equals("minecraft:player_head") && title.contains("Wiki Database"))entry.category="Pets";
         entry.rarity=CatalogEntry.detectRarity(name);
         entry.source=title;
         try{entry.originalSlot=Integer.parseInt(bits[0].replace("Slot","").trim());}
@@ -47,7 +48,7 @@ public final class DumpParser {
         }
         if(entry.rarity.equals("Unknown")){
           for(String l:entry.lore){
-            String r=CatalogEntry.detectRarity(l);
+            String r=l.toUpperCase(Locale.ROOT).trim().matches("^(COMMON|UNCOMMON|RARE|EPIC|LEGENDARY|MYTHIC) PET.*")?CatalogEntry.detectRarity(l):"Unknown";
             if(!r.equals("Unknown")){entry.rarity=r;break;}
           }
         }
