@@ -46,16 +46,16 @@ public final class BattlePediaScreen extends Screen {
         top = 10;
         widthPx = Math.max(250, width - 20);
         heightPx = Math.max(170, height - 20);
-        sideWidth = Math.max(115, Math.min(174, widthPx / 5));
+        sideWidth = Math.max(164, Math.min(204, widthPx / 4));
         mainX = left + sideWidth + 10;
         mainWidth = left + widthPx - mainX - 9;
-        headerHeight = 49;
+        headerHeight = 56;
         bodyTop = top + headerHeight + 6;
         bodyBottom = top + heightPx - 25;
 
         // Search stays in the sidebar rather than stealing the catalog header.
-        search = new TextFieldWidget(textRenderer, left + 10, top + 56,
-            sideWidth - 20, 19, Text.literal("Search BattlePedia"));
+        search = new TextFieldWidget(textRenderer, left + 13, top + 61,
+            sideWidth - 26, 21, Text.literal("Search BattlePedia"));
         search.setPlaceholder(Text.literal("Search items..."));
         search.setMaxLength(128);
         search.setText(query);
@@ -122,6 +122,7 @@ public final class BattlePediaScreen extends Screen {
             case "Epic" -> 4;
             case "Legendary" -> 5;
             case "Mythic" -> 6;
+            case "Unique", "Special" -> 7;
             default -> 0;
         };
     }
