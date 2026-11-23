@@ -1,6 +1,7 @@
 package dev.battlepedia;
 
 import dev.battlepedia.data.*;
+import dev.battlepedia.importer.WikiCapture;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -74,6 +75,10 @@ public final class BattlePediaScreen extends Screen {
 
     void chooseSection(String value) {
         section = value;
+        if (WikiCategories.ALL.stream().anyMatch(c -> c.name().equals(value))) {
+            WikiCapture.setCategory(value);
+            notice = "Capture target: " + value + " (press O in /wiki)";
+        }
         view = value.equals("Home") ? View.HOME : View.BROWSE;
         selectedKey = "";
         selectedRarity = "";
