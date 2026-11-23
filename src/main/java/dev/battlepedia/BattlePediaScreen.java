@@ -4,121 +4,239 @@ import dev.battlepedia.data.*;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * BattlePedia's full-screen dashboard. The left navigation is ALWAYS accessible:
+ * Pets and Pet Items are pinned above expandable wiki category groups.
+ */
 public final class BattlePediaScreen extends Screen {
-  static final String[] RARITIES={"All","Common","Uncommon","Rare","Epic","Legendary","Mythic","Unknown"};
-  String section="Pets",rarity="All",query="",status="Local-first encyclopedia";
-  String selected="";
-  int categoryPage=0,scroll=0,detailScroll=0;
-  int x,y,w,h,side,right,contentX,contentW,rowsTop;
-  private TextFieldWidget search;
-  public BattlePediaScreen(){super(Text.literal("BattlePedia"));}
-  @Override protected void init(){
-    x=12;y=12;w=width-24;h=height-24;
-    side=Math.min(132,Math.max(95,w/4));
-    right=w>=580?Math.min(210,w/3):0;
-    contentX=x+side+12;
-    contentW=w-side-right-24;
-    rowsTop=y+82;
-    search=new TextFieldWidget(textRenderer,contentX+8,y+30,Math.max(55,contentW-16),18,Text.literal("Search BattlePedia"));
-    search.setPlaceholder(Text.literal("Search names, stats, abilities..."));
-    search.setText(query);
-    search.setChangedListener(s->{query=s;scroll=0;});
-    addDrawableChild(search);
-    addDrawableChild(ButtonWidget.builder(Text.literal("Rarity: "+rarity), b->{
-      int index=Arrays.asList(RARITIES).indexOf(rarity);
-      rarity=RARITIES[(index+1)%RARITIES.length];scroll=0;detailScroll=0;clearAndInit();
-    }).dimensions(contentX+8,y+54,Math.max(70,contentW-16),20).build());
-    int navRows=Math.max(3,Math.min(10,(h-94)/23));
-    List<WikiCategories.Category> categories=WikiCategories.ALL;
-    int maxPage=Math.max(0,(categories.size()-1)/navRows);
-    categoryPage=Math.max(0,Math.min(categoryPage,maxPage));
-    for(int i=0;i<navRows;i++){
-      int at=categoryPage*navRows+i;
-      if(at>=categories.size())break;
-      WikiCategories.Category cat=categories.get(at);
-      addDrawableChild(ButtonWidget.builder(Text.literal(cat.name()),b->{
-        section=cat.name();scroll=0;detailScroll=0;selected="";clearAndInit();
-      }).dimensions(x+6,y+35+i*23,side-12,20).build());
+    enum View { HOME, BROWSE, DETAIL }
+
+    record Hit(int left, int top, int right, int bottom, Runnable action) {
+        boolean contains(int x, int y) { return x >= left && x < right && y >= top && y < bottom; }
     }
-    addDrawableChild(ButtonWidget.builder(Text.literal("<"),b->{categoryPage=Math.max(0,categoryPage-1);clearAndInit();})
-      .dimensions(x+6,y+h-27,(side-16)/2,19).build());
-    addDrawableChild(ButtonWidget.builder(Text.literal(">"),b->{categoryPage=Math.min(maxPage,categoryPage+1);clearAndInit();})
-      .dimensions(x+10+(side-16)/2,y+h-27,(side-16)/2,19).build());
-    int buttonW=Math.max(73,Math.min(110,contentW/2-3));
-    addDrawableChild(ButtonWidget.builder(Text.literal("Import pets.txt"),b->importLocal())
-      .dimensions(x+w-buttonW-7,y+9,buttonW,19).build());
-    addDrawableChild(ButtonWidget.builder(Text.literal("Reload"),b->{
-      CatalogStore.INSTANCE.load();status="Reloaded "+CatalogStore.INSTANCE.size()+" entries";selected="";
-    }).dimensions(x+w-buttonW-66,y+9,59,19).build());
-  }
-  private void importLocal(){
-    status="Reading "+CatalogStore.importFile().toString();
-    CompletableFuture.supplyAsync(()->{
-      try{
-        List<CatalogEntry> parsed=DumpParser.read(CatalogStore.importFile());
-        int added=CatalogStore.INSTANCE.merge(parsed);
-        return "Imported "+parsed.size()+" variants; "+added+" new entries";
-      }catch(Exception e){return "Import failed: "+e.getMessage();}
-    }).thenAccept(message->{
-      if(client!=null)client.execute(()->{status=message;scroll=0;});
-    });
-  }
-  /** One row per pet name in the grid; the rarity filter picks its variant. */
-  List<CatalogEntry> visible(){
-    Map<String,CatalogEntry> grouped=new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    for(CatalogEntry e:CatalogStore.INSTANCE.all()){
-      if(query.isBlank()&&!e.category.equals(section))continue;
-      if(!e.matches(query))continue;
-      if(!rarity.equals("All")&&!rarity.equals(e.rarity))continue;
-      String key=e.category+"|"+e.baseName();
-      CatalogEntry old=grouped.get(key);
-      if(old==null||rank(e.rarity)>rank(old.rarity))grouped.put(key,e);
+
+    private final List<Hit> targets = new ArrayList<>();
+    final FavoritesStore favorites = new FavoritesStore();
+    View view = View.BROWSE;
+    String section = "Pets";
+    String expandedGroup = "";
+    String query = "";
+    String selectedKey = "";
+    String selectedRarity = "";
+    String notice = "Browse the BattlePet encyclopedia";
+    int navScroll = 0, browserScroll = 0, abilityScroll = 0, loreScroll = 0;
+    int left, top, widthPx, heightPx, sideWidth, mainX, mainWidth, headerHeight, bodyTop, bodyBottom;
+    private TextFieldWidget search;
+
+    public BattlePediaScreen() {
+        super(Text.literal("BattlePedia"));
+        favorites.load();
     }
-    return new ArrayList<>(grouped.values());
-  }
-  private int rank(String r){
-    int idx=Arrays.asList(RARITIES).indexOf(r);
-    return idx<0?0:idx;
-  }
-  CatalogEntry detail(List<CatalogEntry> visible){
-    if(selected.isBlank())return visible.isEmpty()?null:visible.get(0);
-    for(CatalogEntry e:visible)if((e.category+"|"+e.baseName()).equals(selected))return e;
-    return visible.isEmpty()?null:visible.get(0);
-  }
-  @Override public void render(DrawContext ctx,int mouseX,int mouseY,float delta){
-    PediaRenderer.draw(this,ctx,mouseX,mouseY);
-    super.render(ctx,mouseX,mouseY,delta);
-  }
-  @Override public boolean mouseClicked(Click click,boolean doubled){
-    if(super.mouseClicked(click,doubled))return true;
-    if(click.button()!=0)return false;
-    int mx=(int)click.x(),my=(int)click.y();
-    if(mx>=contentX+5&&mx<contentX+contentW-5&&my>=rowsTop&&my<y+h-34){
-      int index=scroll+(my-rowsTop)/36;
-      List<CatalogEntry> entries=visible();
-      if(index>=0&&index<entries.size()){
-        CatalogEntry entry=entries.get(index);
-        selected=entry.category+"|"+entry.baseName();
-        detailScroll=0;return true;
-      }
+
+    @Override
+    protected void init() {
+        left = 10;
+        top = 10;
+        widthPx = Math.max(250, width - 20);
+        heightPx = Math.max(170, height - 20);
+        sideWidth = Math.max(115, Math.min(174, widthPx / 5));
+        mainX = left + sideWidth + 10;
+        mainWidth = left + widthPx - mainX - 9;
+        headerHeight = 49;
+        bodyTop = top + headerHeight + 6;
+        bodyBottom = top + heightPx - 25;
+
+        // Search stays in the sidebar rather than stealing the catalog header.
+        search = new TextFieldWidget(textRenderer, left + 10, top + 56,
+            sideWidth - 20, 19, Text.literal("Search BattlePedia"));
+        search.setPlaceholder(Text.literal("Search items..."));
+        search.setMaxLength(128);
+        search.setText(query);
+        search.setChangedListener(value -> {
+            if (!query.equals(value)) {
+                query = value;
+                browserScroll = 0;
+                if (!query.isBlank()) view = View.BROWSE;
+            }
+        });
+        addDrawableChild(search);
     }
-    return false;
-  }
-  @Override public boolean mouseScrolled(double mx,double my,double horizontal,double vertical){
-    if(mx>=contentX&&mx<contentX+contentW){
-      scroll=Math.max(0,scroll+(vertical>0?-2:2));return true;
+
+    void hit(int x, int y, int w, int h, Runnable action) {
+        if (w > 0 && h > 0) targets.add(new Hit(x, y, x + w, y + h, action));
     }
-    if(right>0&&mx>=x+w-right){
-      detailScroll=Math.max(0,detailScroll+(vertical>0?-2:2));return true;
+
+    void chooseSection(String value) {
+        section = value;
+        view = value.equals("Home") ? View.HOME : View.BROWSE;
+        selectedKey = "";
+        selectedRarity = "";
+        browserScroll = 0;
+        abilityScroll = 0;
+        loreScroll = 0;
+        query = "";
+        if (search != null) search.setText("");
     }
-    return super.mouseScrolled(mx,my,horizontal,vertical);
-  }
-  @Override public boolean shouldPause(){return false;}
+
+    void chooseEntry(CatalogEntry entry) {
+        selectedKey = entry.category + "|" + entry.baseName();
+        selectedRarity = resolvedRarity(entry);
+        view = View.DETAIL;
+        abilityScroll = 0;
+        loreScroll = 0;
+    }
+
+    void chooseRarity(String rarity) {
+        selectedRarity = rarity;
+        abilityScroll = 0;
+        loreScroll = 0;
+    }
+
+    static String resolvedRarity(CatalogEntry entry) {
+        if (entry.rarity != null && !entry.rarity.equals("Unknown")) return entry.rarity;
+        if (entry.lore != null) for (int i = entry.lore.size() - 1; i >= 0; i--) {
+            String line = entry.lore.get(i).trim().toUpperCase(Locale.ROOT);
+            if (line.matches("^(COMMON|UNCOMMON|RARE|EPIC|LEGENDARY|MYTHIC)( GUILD)? PET.*$")) {
+                return CatalogEntry.detectRarity(line);
+            }
+        }
+        return "Unknown";
+    }
+
+    private static int rarityOrder(String r) {
+        return switch (r) {
+            case "Common" -> 1;
+            case "Uncommon" -> 2;
+            case "Rare" -> 3;
+            case "Epic" -> 4;
+            case "Legendary" -> 5;
+            case "Mythic" -> 6;
+            default -> 0;
+        };
+    }
+
+    String identity(CatalogEntry entry) {
+        return entry.category + "|" + entry.baseName();
+    }
+
+    List<CatalogEntry> browserEntries() {
+        Map<String, CatalogEntry> unique = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        for (CatalogEntry e : CatalogStore.INSTANCE.all()) {
+            if (!query.isBlank()) {
+                if (!e.matches(query)) continue;
+            } else if (section.equals("Favorites")) {
+                if (!favorites.has(identity(e))) continue;
+            } else if (!section.equals(e.category)) {
+                continue;
+            }
+            String key = identity(e);
+            CatalogEntry previous = unique.get(key);
+            if (previous == null || rarityOrder(resolvedRarity(e)) > rarityOrder(resolvedRarity(previous))) {
+                unique.put(key, e);
+            }
+        }
+        return new ArrayList<>(unique.values());
+    }
+
+    List<CatalogEntry> selectedVariants() {
+        if (selectedKey.isBlank()) return List.of();
+        List<CatalogEntry> result = new ArrayList<>();
+        for (CatalogEntry e : CatalogStore.INSTANCE.all()) {
+            if (selectedKey.equals(identity(e))) result.add(e);
+        }
+        result.sort(Comparator.comparingInt(e -> rarityOrder(resolvedRarity(e))));
+        return result;
+    }
+
+    CatalogEntry activeVariant() {
+        List<CatalogEntry> options = selectedVariants();
+        if (options.isEmpty()) return null;
+        if (!selectedRarity.isBlank()) for (CatalogEntry e : options) {
+            if (resolvedRarity(e).equals(selectedRarity)) return e;
+        }
+        return options.get(options.size() - 1);
+    }
+
+    boolean isFavorite() { return !selectedKey.isBlank() && favorites.has(selectedKey); }
+
+    void toggleFavorite() {
+        if (selectedKey.isBlank()) return;
+        favorites.toggle(selectedKey);
+        notice = favorites.has(selectedKey) ? "Added to favorites" : "Removed from favorites";
+    }
+
+    void reload() {
+        CatalogStore.INSTANCE.load();
+        notice = "Loaded " + CatalogStore.INSTANCE.size() + " entries";
+    }
+
+    void importTextDump() {
+        notice = "Importing pets.txt...";
+        CompletableFuture.supplyAsync(() -> {
+            try {
+                List<CatalogEntry> records = DumpParser.read(CatalogStore.importFile());
+                int inserted = CatalogStore.INSTANCE.merge(records);
+                return "Imported " + records.size() + " variants (" + inserted + " new)";
+            } catch (Exception error) {
+                return "Import failed: " + error.getMessage();
+            }
+        }).thenAccept(message -> {
+            if (client != null) client.execute(() -> notice = message);
+        });
+    }
+
+    @Override
+    public void render(DrawContext context, int mouseX, int mouseY, float deltaTicks) {
+        targets.clear();
+        PediaRenderer.draw(this, context, mouseX, mouseY);
+        super.render(context, mouseX, mouseY, deltaTicks);
+    }
+
+    @Override
+    public boolean mouseClicked(Click click, boolean doubled) {
+        if (super.mouseClicked(click, doubled)) return true;
+        if (click.button() != 0) return false;
+        int mx = (int) click.x(), my = (int) click.y();
+        // A reverse traversal honors buttons rendered above other elements.
+        for (int i = targets.size() - 1; i >= 0; i--) {
+            Hit target = targets.get(i);
+            if (target.contains(mx, my)) {
+                target.action().run();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontal, double vertical) {
+        int mx = (int) mouseX, my = (int) mouseY;
+        int amount = vertical > 0 ? -2 : 2;
+        if (mx < left + sideWidth) {
+            navScroll = Math.max(0, navScroll + amount);
+            return true;
+        }
+        if (view == View.BROWSE && mx >= mainX && my >= bodyTop && my < bodyBottom) {
+            browserScroll = Math.max(0, browserScroll + amount);
+            return true;
+        }
+        if (view == View.DETAIL && my >= bodyTop && my < bodyBottom) {
+            int centerRight = PediaRenderer.detailCenterRight(this);
+            if (mx < centerRight) abilityScroll = Math.max(0, abilityScroll + amount);
+            else loreScroll = Math.max(0, loreScroll + amount);
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, horizontal, vertical);
+    }
+
+    @Override
+    public boolean shouldPause() {
+        return false;
+    }
 }

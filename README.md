@@ -1,4 +1,4 @@
-# BattlePedia (Fabric 1.21.11)
+# BattlePedia (Fabric 1.21.11)\n\n## New in v0.2: encyclopedia interface\n\nThe main GUI has been rebuilt with a translucent purple/blue theme matching the concept more closely. **Pets**, **Pet Items** and **Favorites** are pinned on the left, with expandable navigation for all other wiki categories. Browse a pet grid and click a pet to open its dedicated detail page with a larger native icon, individual rarity buttons, extracted stats and ability cards, source information, and the unmodified original wiki lore.\n\nYou can switch rarity on the detail page, use the global search in the sidebar, scroll panels independently, and save favorites locally. Missing player-head textures are a data limitation: press **O** in the real wiki GUI to capture the server's native player-head components. This is an actual GUI implementation but only CI compilation has been verified; please report any in-game issues.\n
 
 Standalone, client-side BattlePet encyclopedia for Minecraft. No Meteor Client or server-side plugin required.
 
