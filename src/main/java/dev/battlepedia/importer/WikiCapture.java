@@ -27,6 +27,7 @@ public final class WikiCapture {
     if(client.world==null||client.player==null||!(client.currentScreen instanceof HandledScreen<?> screen))
       return "Open a BattlePet wiki inventory first.";
     String title=screen.getTitle().getString();
+    if(!LoreRules.isWikiPage(title))return "Open a BattlePet wiki inventory first.";
     String detected=WikiCategories.fromTitle(title);
     String category = !selectedCategory.equals("Unsorted") ? selectedCategory : detected;
     // The top-level wiki is navigation, not catalog data.
@@ -58,8 +59,11 @@ public final class WikiCapture {
       }
       // The server calls every category Wiki Database. Match each actual item against
       // the shipped name/material/lore index; explicit target is only a tie-breaker.
-      String matched=WikiPreset.category(name,id,entry.lore,category);
-      if(!matched.equals("Unsorted"))entry.category=matched;
+      if(LoreRules.isPet(entry.lore)) entry.category="Pets";
+      else {
+        String matched=WikiPreset.category(name,id,entry.lore,category);
+        entry.category=matched;
+      }
       try{
         var ops=RegistryOps.of(JsonOps.INSTANCE,client.world.getRegistryManager());
         entry.stackJson=ItemStack.CODEC.encodeStart(ops,stack).result().map(Object::toString).orElse("");

@@ -27,9 +27,7 @@ public final class BattlePediaClient implements ClientModInitializer {
       boolean held=client.getWindow()!=null && GLFW.glfwGetKey(client.getWindow().getHandle(),GLFW.GLFW_KEY_O)==GLFW.GLFW_PRESS;
       if(held&&!captureHeld && client.currentScreen instanceof HandledScreen<?> && client.player!=null){
         String title=client.currentScreen.getTitle().getString();
-        if(title.toLowerCase(java.util.Locale.ROOT).contains("wiki")||
-          !dev.battlepedia.data.WikiCategories.fromTitle(title).equals("Unsorted") ||
-          !WikiCapture.selectedCategory().equals("Unsorted")){
+        if(dev.battlepedia.data.LoreRules.isWikiPage(title)){
           client.player.sendMessage(Text.literal("[BattlePedia] "+WikiCapture.capture(client)),false);
         }
       }
