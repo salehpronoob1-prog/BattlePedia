@@ -19,16 +19,16 @@ public final class CatalogStore {
   private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
   private static final Type LIST_TYPE = new TypeToken<List<CatalogEntry>>() {}.getType();
   private final Map<String,CatalogEntry> entries = new LinkedHashMap<>();
-  private long revision=0;
-  public synchronized long revision(){return revision;}
   public record Snapshot(long revision,List<CatalogEntry> entries){}
-  public synchronized Snapshot snapshot(){return new Snapshot(revision,new ArrayList<>(entries.values()));}
+  private volatile Snapshot published=new Snapshot(0,List.of());
+  public long revision(){return published.revision();}
+  public Snapshot snapshot(){return published;}
+  private void publish(){published=new Snapshot(published.revision()+1,List.copyOf(entries.values()));}
   private CatalogStore() {}
   public static Path dir() { return FabricLoader.getInstance().getConfigDir().resolve("battlepedia"); }
   public static Path dataFile() { return dir().resolve("entries.json"); }
   public static Path importFile() { return dir().resolve("imports").resolve("pets.txt"); }
   public synchronized void load() {
-    revision++;
     entries.clear();
     // Ship the full wiki database with the mod, including first-time installs.
     // Saved ItemStacks and player-head textures from the user's local database take precedence.
@@ -47,6 +47,7 @@ public final class CatalogStore {
       }
     } catch (IOException ex) {
       LOG.error("Could not initialize BattlePedia config directory at " + dir(), ex);
+      publish();
       return;
     }
     try (var r = Files.newBufferedReader(dataFile(),StandardCharsets.UTF_8)) {
@@ -55,15 +56,16 @@ public final class CatalogStore {
         for(CatalogEntry normalized:LoreRules.normalize(e)) putPreferred(normalized);
       }
     } catch(Exception ex) { LOG.error("Catalog load failed; existing data was not modified",ex); }
+    publish();
   }
   private static boolean valid(CatalogEntry e) {
     return e!=null && e.name!=null && !e.name.isBlank() && e.category!=null && e.rarity!=null;
   }
-  public synchronized int size(){ return entries.size(); }
-  public synchronized int sectionCount(String category){
-    return (int) entries.values().stream().filter(e -> e.category.equals(category)).map(CatalogEntry::baseName).distinct().count();
+  public int size(){ return published.entries().size(); }
+  public int sectionCount(String category){
+    return (int) published.entries().stream().filter(e -> e.category.equals(category)).map(CatalogEntry::baseName).distinct().count();
   }
-  public synchronized List<CatalogEntry> all(){ return new ArrayList<>(entries.values()); }
+  public List<CatalogEntry> all(){ return new ArrayList<>(published.entries()); }
   private static boolean hasStack(CatalogEntry e) { return e.stackJson!=null && !e.stackJson.isBlank(); }
   private void putPreferred(CatalogEntry e) {
     CatalogEntry previous=entries.get(e.key());
@@ -81,7 +83,7 @@ public final class CatalogStore {
         putPreferred(normalized);
       }
     }
-    revision++;
+    publish();
     save();
     return added;
   }
