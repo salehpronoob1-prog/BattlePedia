@@ -75,7 +75,7 @@ final class SearchIndex {
             int score=score(row,q,words);
             if(score<0)continue;
             Match old=best.get(row.id);
-            if(old==null||score>old.score||score==old.score&&row.rarity>old.item.rarity)
+            if(old==null||score>old.score||score==old.score&&(sort==Sort.RECENT && row.entry.capturedAt!=old.item.entry.capturedAt ? row.entry.capturedAt>old.item.entry.capturedAt : row.rarity>old.item.rarity))
                 best.put(row.id,new Match(row,score));
         }
         Comparator<Match> name=Comparator.comparing(m->m.item.name);
