@@ -143,7 +143,7 @@ final class PediaRenderer {
             if(group)text(ctx,font,n.group.equals(s.expandedGroup)?"-":"+",nx+nw-13,cy+6,PURPLE);
             if(group){
                 s.hit(nx,cy,nw-18,19,()->{s.expandedGroup=n.group;s.chooseSection(n.section);});
-                s.hit(nx+nw-18,cy,18,19,()->s.expandedGroup=s.expandedGroup.equals(n.group)?"":n.group);
+                s.hit(nx+nw-18,cy,18,19,()->s.toggleGroup(n.group));
             }else s.hit(nx,cy,nw,19,()->s.chooseSection(n.section));
         }
         ctx.disableScissor();
@@ -197,9 +197,10 @@ final class PediaRenderer {
             action(s,ctx,x+8+(i%2)*(bw+5),y+22+(i/2)*22,bw,19,
                 size.name()+" "+size.percent+"%",()->s.setSize(size),mx,my,s.prefs.size==size,false);
         }
-        action(s,ctx,x+8,y+70,w-16,19,"Animations: "+s.prefs.animationLabel(),s::cycleAnimation,mx,my,false,false);
-        action(s,ctx,x+8,y+92,bw,19,"Reload",s::reload,mx,my,false,false);
-        action(s,ctx,x+13+bw,y+92,bw,19,"Import",s::importTextDump,mx,my,false,false);
+        int controls=y+68;
+        action(s,ctx,x+8,controls,w-16,17,"Animations: "+s.prefs.animationLabel(),s::cycleAnimation,mx,my,false,false);
+        action(s,ctx,x+8,controls+19,bw,17,"Reload",s::reload,mx,my,false,false);
+        action(s,ctx,x+13+bw,controls+19,bw,17,"Import",s::importTextDump,mx,my,false,false);
         if(h>128)text(ctx,font,crop(font,s.notice,w-18),x+9,y+117,MUTED);
     }
 
@@ -216,33 +217,32 @@ final class PediaRenderer {
     }
 
     private static void home(BattlePediaScreen s,DrawContext ctx,int mx,int my){
-        header(s,ctx,"Home  >  Explore the BattlePet Encyclopedia",false,mx,my);
+        header(s,ctx,"Home / BattlePet Encyclopedia",false,mx,my);
         int x=s.mainX,y=s.bodyTop,w=s.mainWidth,h=s.bodyBottom-y;
-        PediaChrome.pixelFrame(ctx,x,y,w,h,0xEE12132F,PURPLE,true);
-        PediaChrome.softGlow(ctx,x+w/2,y+70,60,0xFF7531B8);
-        text(ctx,s.getTextRenderer(),"WELCOME TO BATTLEPEDIA",x+19,y+19,GOLD);
-        text(ctx,s.getTextRenderer(),crop(s.getTextRenderer(),"Explore pets, magical equipment and original wiki lore",w-38),
-            x+19,y+36,WHITE);
-        text(ctx,s.getTextRenderer(),CatalogStore.INSTANCE.size()+" catalog variants loaded locally",
-            x+19,y+54,GREEN);
-        List<String> categories=List.of("Pets","Pet Items","Melee Weapons","Ranged Weapons","Artifacts",
-            "Enchantments","Chestplates","Power Cores","Crafting Ingredients");
-        int cols=w>490?3:2,gap=9,cardW=(w-38-(cols-1)*gap)/cols;
-        int y0=y+81;
-        ctx.enableScissor(x+7,y0,x+w-7,y+h-12);
+        PediaChrome.pixelFrame(ctx,x,y,w,h,0xF012132F,PURPLE,true);
+        TextRenderer font=s.getTextRenderer();
+        text(ctx,font,"WELCOME TO BATTLEPEDIA",x+9,y+8,GOLD);
+        text(ctx,font,crop(font,CatalogStore.INSTANCE.size()+" variants | Search all wiki items",w-18),x+9,y+20,MUTED);
+        List<String> categories=List.of("Pets","Pet Items","Melee Weapons","Ranged Weapons","Magic Weapons","Tank Weapons",
+            "Executioner Weapons","Helmets","Chestplates","Leggings","Boots","Necklaces","Cloaks","Belts","Gloves",
+            "Artifacts","Enchantments","Power Cores","Brews","Crafting Ingredients","Pickaxes & Drills","Fishing Rods");
+        int cols=Math.max(1,w/112),gap=4,cardW=(w-14-(cols-1)*gap)/cols;
+        int y0=y+34,bottom=y+h-5,stride=36,rows=(categories.size()+cols-1)/cols;
+        int visible=Math.max(1,(bottom-y0)/stride),offset=s.scrollPixels(stride,Math.max(0,rows-visible));
+        ctx.enableScissor(x+4,y0,x+w-4,bottom);
         for(int i=0;i<categories.size();i++){
             String c=categories.get(i);
-            int tx=x+19+(i%cols)*(cardW+gap);
-            int ty=y0+(i/cols)*57;
-            boolean hover=inside(mx,my,tx,ty,cardW,49);
-            PediaChrome.pixelFrame(ctx,tx,ty,cardW,49,hover?0xF83D255B:0xF5211C3D,
-                hover?PURPLE:0xFF594775,hover);
-            drawLarge(ctx,vanilla(WikiCategories.icon(c)),tx+11,ty+9,2);
-            text(ctx,s.getTextRenderer(),crop(s.getTextRenderer(),c,cardW-57),
-                tx+48,ty+12,WHITE);
-            int count=s.sectionCount(c);
-            text(ctx,s.getTextRenderer(),count+" entries",tx+48,ty+27,MUTED);
-            s.hit(tx,ty,cardW,49,()->s.chooseSection(c));
+            int tx=x+7+(i%cols)*(cardW+gap),ty=y0+(i/cols)*stride-offset;
+            if(ty+32<=y0||ty>=bottom)continue;
+            boolean hover=my>=y0&&my<bottom&&inside(mx,my,tx,ty,cardW,32);
+            double glow=s.hover("home:"+c,hover);
+            PediaChrome.pixelFrame(ctx,tx,ty,cardW,32,mix(0xF5211C3D,0xF83D255B,glow),
+                mix(0xFF594775,PURPLE,glow),hover);
+            drawNative(ctx,vanilla(WikiCategories.icon(c)),tx+5,ty+8);
+            text(ctx,font,crop(font,c,cardW-28),tx+25,ty+6,WHITE);
+            text(ctx,font,s.sectionCount(c)+" entries",tx+25,ty+18,MUTED);
+            int hitY=Math.max(ty,y0),hitBottom=Math.min(ty+32,bottom);
+            s.hit(tx,hitY,cardW,hitBottom-hitY,()->s.chooseSection(c));
         }
         ctx.disableScissor();
     }
@@ -259,7 +259,7 @@ final class PediaRenderer {
         PediaChrome.div(ctx,x+7,y+27,w-14);
         boolean grid=s.prefs.grid;
         int cols=Math.max(1,Math.min(grid?12:5,(w-12)/(grid?72:150))),gap=4;
-        int cardW=(w-14-gap*(cols-1))/cols,cardH=grid?55:62;
+        int cardW=(w-14-gap*(cols-1))/cols,cardH=grid?65:62;
         int stride=cardH+gap,listTop=y+33,listBottom=y+h-5,rows=(items.size()+cols-1)/cols;
         int viewport=Math.max(1,listBottom-listTop);
         int max=Math.max(0,rows-Math.max(1,viewport/stride));
@@ -281,10 +281,10 @@ final class PediaRenderer {
             if(grid){
                 drawNative(ctx,icon(entry),cx+(cardW-16)/2,cy+6);
                 PediaChrome.center(ctx,font,crop(font,entry.baseName(),cardW-8),cx+cardW/2,cy+25,WHITE);
-                String label=s.section.equals("Home")?entry.category:BattlePediaScreen.resolvedRarity(entry);
-                PediaChrome.center(ctx,font,crop(font,label,cardW-8),cx+cardW/2,cy+36,rarity);
+                PediaChrome.center(ctx,font,crop(font,BattlePediaScreen.resolvedRarity(entry),cardW-8),cx+cardW/2,cy+36,rarity);
                 String stat=firstStat(entry);
-                PediaChrome.center(ctx,font,crop(font,stat,cardW-8),cx+cardW/2,cy+46,GREEN);
+                PediaChrome.center(ctx,font,crop(font,s.section.equals("Home")?entry.category:stat,cardW-8),cx+cardW/2,cy+46,s.section.equals("Home")?MUTED:GREEN);
+                if(s.section.equals("Home"))PediaChrome.center(ctx,font,crop(font,stat,cardW-8),cx+cardW/2,cy+56,GREEN);
             }else{
                 drawLarge(ctx,icon(entry),cx+7,cy+11,2);
                 text(ctx,font,crop(font,entry.baseName(),cardW-52),cx+44,cy+9,WHITE);
@@ -367,7 +367,7 @@ final class PediaRenderer {
         PediaChrome.center(ctx,font,BattlePediaScreen.resolvedRarity(e).toUpperCase(Locale.ROOT),
             x+w/2,y+heroH-14,rarity);
         int infoY=y+heroH+9,infoH=h-heroH-9;
-        if(infoH<34)return;
+        if(infoH<45)return;
         PediaChrome.pixelFrame(ctx,x,infoY,w,infoH,0xF21A1733,0xFF665196,false);
         text(ctx,font,e.category.equals("Pets")?"PET DETAILS":"ITEM DETAILS",x+10,infoY+12,PURPLE);
         PediaChrome.div(ctx,x+9,infoY+27,w-18);
@@ -404,8 +404,12 @@ final class PediaRenderer {
         }
         int perRow=Math.max(1,Math.min(8,(w-14)/44));
         int rowCount=(rarities.size()+perRow-1)/perRow;
-        int tabH=19+rowCount*18+4;
+        boolean shortPanel=h<145;
+        int tabH=shortPanel?22:19+rowCount*18+4;
         PediaChrome.pixelFrame(ctx,x,y,w,tabH,0xF1181735,0xFF675495,false);
+        if(shortPanel){
+            action(s,ctx,x+5,y+3,w-10,16,"Rarity: "+BattlePediaScreen.resolvedRarity(e)+" >",s::nextRarity,mx,my,true,false);
+        }else{
         text(ctx,font,"Rarity",x+8,y+5,WHITE);
         int tabW=(w-16-4*(perRow-1))/perRow;
         for(int i=0;i<rarities.size();i++){
@@ -418,6 +422,7 @@ final class PediaRenderer {
             String label=crop(font,rarity,tabW-6);
             PediaChrome.center(ctx,font,label,tx+tabW/2,ty+4,color);
             s.hit(tx,ty,tabW,16,()->s.chooseRarity(rarity));
+        }
         }
         int bodyY=y+tabH+4,bodyH=h-tabH-4;
         if(bodyH<22)return;
@@ -453,7 +458,7 @@ final class PediaRenderer {
         int total=statsPixel+12+abilityPixel;
         int maxScroll=Math.max(0,(total-(clipBottom-clipTop)+17)/18);
         s.abilityScroll=Math.min(s.abilityScroll,maxScroll);
-        int cursor=clipTop-s.abilityScroll*18;
+        int cursor=clipTop-s.detailScrollPixels(false,maxScroll);
         ctx.enableScissor(x+5,clipTop,x+w-5,clipBottom);
         for(String stat:statRows){
             if(cursor+20>=clipTop&&cursor<clipBottom){
@@ -546,7 +551,7 @@ final class PediaRenderer {
             for(String part:lines)rawHeight+=part.isBlank()?7:Math.max(1,wrap(font,part,contentWidth).size())*11;
         }
         s.loreScroll=Math.min(s.loreScroll,Math.max(0,(rawHeight-(clipBottom-clipTop)+11)/14));
-        int pos=clipTop-s.loreScroll*14;
+        int pos=clipTop-s.detailScrollPixels(true,Math.max(0,(rawHeight-(clipBottom-clipTop)+11)/14));
         ctx.enableScissor(innerX+4,clipTop,innerX+innerW-4,clipBottom);
         if(pos+12>=clipTop&&pos<clipBottom)
             text(ctx,font,crop(font,e.baseName(),contentWidth),textX,pos,
