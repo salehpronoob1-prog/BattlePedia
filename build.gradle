@@ -19,3 +19,6 @@ tasks.register('searchChecks', JavaExec) {
     mainClass = 'dev.battlepedia.SearchIndexChecks'
 }
 tasks.named('check') { dependsOn 'searchChecks' }
+
+// SearchIndexChecks is an executable regression suite rather than a JUnit test class.
+tasks.named('test') { failOnNoDiscoveredTests = false }
