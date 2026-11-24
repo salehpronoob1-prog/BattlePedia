@@ -19,11 +19,16 @@ public final class CatalogStore {
   private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
   private static final Type LIST_TYPE = new TypeToken<List<CatalogEntry>>() {}.getType();
   private final Map<String,CatalogEntry> entries = new LinkedHashMap<>();
+  private long revision=0;
+  public synchronized long revision(){return revision;}
+  public record Snapshot(long revision,List<CatalogEntry> entries){}
+  public synchronized Snapshot snapshot(){return new Snapshot(revision,new ArrayList<>(entries.values()));}
   private CatalogStore() {}
   public static Path dir() { return FabricLoader.getInstance().getConfigDir().resolve("battlepedia"); }
   public static Path dataFile() { return dir().resolve("entries.json"); }
   public static Path importFile() { return dir().resolve("imports").resolve("pets.txt"); }
   public synchronized void load() {
+    revision++;
     entries.clear();
     // Ship the full wiki database with the mod, including first-time installs.
     // Saved ItemStacks and player-head textures from the user's local database take precedence.
@@ -64,6 +69,7 @@ public final class CatalogStore {
     CatalogEntry previous=entries.get(e.key());
     if(previous!=null && hasStack(previous) && !hasStack(e))return;
     if(previous!=null && (e.lore==null || e.lore.isEmpty())) e.lore=previous.lore;
+    if(previous!=null && e.capturedAt==0)e.capturedAt=previous.capturedAt;
     entries.put(e.key(),e);
   }
   public synchronized int merge(Collection<CatalogEntry> batch) throws IOException {
@@ -75,6 +81,7 @@ public final class CatalogStore {
         putPreferred(normalized);
       }
     }
+    revision++;
     save();
     return added;
   }
