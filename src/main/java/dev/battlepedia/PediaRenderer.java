@@ -27,7 +27,10 @@ final class PediaRenderer {
     private static final Map<CatalogEntry,ItemStack> ICONS=new IdentityHashMap<>();
     private static final Map<CatalogEntry,LoreInfo> LORE=new IdentityHashMap<>();
     private static final Map<String,ItemStack> VANILLA=new HashMap<>();
-    static void clearCaches(){ICONS.clear();LORE.clear();}
+    private static Object iconWorld;
+    private static final Map<CatalogEntry,List<OrderedText>> HOVER_LORE=new IdentityHashMap<>();
+    private static int hoverWidth=-1;
+    static void clearCaches(){ICONS.clear();LORE.clear();HOVER_LORE.clear();}
     private static int mix(int a,int b,double t){
         int result=0;
         for(int shift=0;shift<=24;shift+=8)result|=((int)Math.round(((a>>>shift)&255)*(1-t)+((b>>>shift)&255)*t))<<shift;
@@ -305,18 +308,29 @@ final class PediaRenderer {
     private static void hoverTooltip(BattlePediaScreen s,DrawContext ctx,CatalogEntry e,int mx,int my){
         TextRenderer font=s.getTextRenderer();
         int w=Math.min(240,s.width-8);
-        List<String> lines=new ArrayList<>();
-        lines.add(e.baseName());lines.add(e.category+" / "+BattlePediaScreen.resolvedRarity(e));
-        for(String l:e.lore==null?List.<String>of():e.lore){
-            if(l.isBlank())continue;
-            lines.addAll(wrap(font,l,w-14));
-            if(lines.size()>=11)break;
-        }
-        if(lines.size()>11)lines=new ArrayList<>(lines.subList(0,11));
-        lines.add("Click for full original tooltip");
-        int h=lines.size()*11+10,x=Math.clamp(mx+10,4,Math.max(4,s.width-w-4)),y=Math.clamp(my+10,4,Math.max(4,s.height-h-4));
+        if(hoverWidth!=w){hoverWidth=w;HOVER_LORE.clear();}
+        // Preserve the server's original Text styles on captured item lore.
+        ItemStack item=icon(e);
+        List<OrderedText> lines=HOVER_LORE.computeIfAbsent(e,key->{
+            List<Text> parts=new ArrayList<>();
+            LoreComponent nativeLore=item.get(DataComponentTypes.LORE);
+            if(nativeLore!=null&&!nativeLore.lines().isEmpty())parts.addAll(nativeLore.lines());
+            else for(String line:e.lore==null?List.<String>of():e.lore)parts.add(Text.literal(line));
+            List<OrderedText> wrapped=new ArrayList<>();
+            for(Text part:parts){
+                if(part.getString().isBlank())continue;
+                wrapped.addAll(font.wrapLines(part,w-14));
+                if(wrapped.size()>=9)break;
+            }
+            return List.copyOf(wrapped.subList(0,Math.min(9,wrapped.size())));
+        });
+        int h=(lines.size()+3)*11+10;
+        int x=Math.clamp(mx+10,4,Math.max(4,s.width-w-4)),y=Math.clamp(my+10,4,Math.max(4,s.height-h-4));
         PediaChrome.pixelFrame(ctx,x,y,w,h,0xFD10091C,0xFFA053CE,true);
-        for(int i=0;i<lines.size();i++)text(ctx,font,crop(font,lines.get(i),w-12),x+6,y+5+i*11,i==0?PediaChrome.rarity(e.rarity):i==1?PURPLE:WHITE);
+        text(ctx,font,crop(font,e.baseName(),w-12),x+6,y+5,PediaChrome.rarity(e.rarity));
+        text(ctx,font,crop(font,e.category+" / "+BattlePediaScreen.resolvedRarity(e),w-12),x+6,y+16,PURPLE);
+        for(int i=0;i<lines.size();i++)ctx.drawText(font,lines.get(i),x+6,y+27+i*11,WHITE,false);
+        text(ctx,font,"Click for full original tooltip",x+6,y+27+lines.size()*11,MUTED);
     }
 
     private static String firstStat(CatalogEntry e){
@@ -705,10 +719,11 @@ final class PediaRenderer {
     }
 
     static ItemStack icon(CatalogEntry entry){
+        MinecraftClient client=MinecraftClient.getInstance();
+        if(iconWorld!=client.world){iconWorld=client.world;ICONS.clear();HOVER_LORE.clear();}
         ItemStack found=ICONS.get(entry);
         if(found!=null)return found;
         ItemStack stack=ItemStack.EMPTY;
-        MinecraftClient client=MinecraftClient.getInstance();
         if(entry.stackJson!=null&&!entry.stackJson.isBlank()&&client.world!=null){
             try{
                 var ops=RegistryOps.of(JsonOps.INSTANCE,client.world.getRegistryManager());
@@ -719,7 +734,7 @@ final class PediaRenderer {
         if(stack.isEmpty()){
             stack=vanilla(entry.itemId);
             // Don't cache an incomplete player head before registries become available.
-            if(entry.stackJson!=null&&!entry.stackJson.isBlank())return stack;
+            if(client.world==null&&entry.stackJson!=null&&!entry.stackJson.isBlank())return stack;
         }
         ICONS.put(entry,stack);
         return stack;
