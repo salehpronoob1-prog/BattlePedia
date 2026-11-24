@@ -18,6 +18,8 @@ public final class CatalogEntry {
     public String source = "";
     public int originalSlot = -1;
     public int count = 1;
+    /** Zero for older records whose capture time is unknown. */
+    public long capturedAt = 0;
 
     private static final Pattern COLOR = Pattern.compile("(?i)§[0-9a-fk-or]");
     private static final Pattern RARITY = Pattern.compile("(?i)\\b(Mythic|Legendary|Epic|Rare|Uncommon|Common|Unique|Special)\\b");
