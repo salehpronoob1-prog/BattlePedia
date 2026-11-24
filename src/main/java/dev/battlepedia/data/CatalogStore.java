@@ -47,9 +47,7 @@ public final class CatalogStore {
     try (var r = Files.newBufferedReader(dataFile(),StandardCharsets.UTF_8)) {
       List<CatalogEntry> all = GSON.fromJson(r, LIST_TYPE);
       if(all!=null) for(CatalogEntry e:all) if(valid(e)) {
-        String matched = WikiPreset.category(e.name, e.itemId, e.lore, e.category);
-        if (!matched.equals("Unsorted") && (e.category.equals("Unsorted") || (e.category.equals("Pets") && !matched.equals("Pets")))) e.category = matched;
-        entries.put(e.key(),e);
+        for(CatalogEntry normalized:LoreRules.normalize(e)) putPreferred(normalized);
       }
     } catch(Exception ex) { LOG.error("Catalog load failed; existing data was not modified",ex); }
   }
@@ -61,15 +59,21 @@ public final class CatalogStore {
     return (int) entries.values().stream().filter(e -> e.category.equals(category)).map(CatalogEntry::baseName).distinct().count();
   }
   public synchronized List<CatalogEntry> all(){ return new ArrayList<>(entries.values()); }
+  private static boolean hasStack(CatalogEntry e) { return e.stackJson!=null && !e.stackJson.isBlank(); }
+  private void putPreferred(CatalogEntry e) {
+    CatalogEntry previous=entries.get(e.key());
+    if(previous!=null && hasStack(previous) && !hasStack(e))return;
+    if(previous!=null && (e.lore==null || e.lore.isEmpty())) e.lore=previous.lore;
+    entries.put(e.key(),e);
+  }
   public synchronized int merge(Collection<CatalogEntry> batch) throws IOException {
     int added=0;
     for(CatalogEntry e:batch){
       if(!valid(e))continue;
-      CatalogEntry previous=entries.get(e.key());
-      if(previous==null)added++;
-      if(previous!=null && (e.stackJson==null || e.stackJson.isBlank()))e.stackJson=previous.stackJson;
-      if(previous!=null && (e.lore==null || e.lore.isEmpty()))e.lore=previous.lore;
-      entries.put(e.key(),e);
+      for(CatalogEntry normalized:LoreRules.normalize(e)){
+        if(!entries.containsKey(normalized.key()))added++;
+        putPreferred(normalized);
+      }
     }
     save();
     return added;
