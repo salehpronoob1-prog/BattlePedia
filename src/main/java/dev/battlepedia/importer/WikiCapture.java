@@ -48,7 +48,7 @@ public final class WikiCapture {
       entry.name=name;
       entry.category=category;
       entry.rarity=CatalogEntry.detectRarity(name);
-      entry.itemId=id;entry.count=stack.getCount();entry.originalSlot=i;entry.source=title;
+      entry.itemId=id;entry.count=stack.getCount();entry.originalSlot=i;entry.source=title;entry.capturedAt=System.currentTimeMillis();
       LoreComponent lore=stack.get(DataComponentTypes.LORE);
       if(lore!=null)for(Text t:lore.lines())entry.lore.add(t.getString());
       if(entry.rarity.equals("Unknown"))for(String l:entry.lore){
