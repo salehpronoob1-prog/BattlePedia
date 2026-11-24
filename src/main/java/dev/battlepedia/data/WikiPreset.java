@@ -29,6 +29,8 @@ public final class WikiPreset {
                         entry.rarity = columns[2]; entry.itemId = columns[3];
                         entry.source = "BattlePet Wiki / " + entry.category;
                         entry.lore = new ArrayList<>(Arrays.asList(columns[4].split(String.valueOf((char)31), -1)));
+                        String actualRarity = LoreRules.rarity(entry.lore);
+                        if (!actualRarity.equals("Unknown")) entry.rarity = actualRarity;
                         list.add(entry);
                     }
                 }
@@ -49,6 +51,17 @@ public final class WikiPreset {
     public static List<CatalogEntry> records() { return RECORDS; }
     public static String normal(String s) {
         return (s == null ? "" : s.replaceAll("(?i)§[0-9a-fk-or]", "").trim()).toLowerCase(Locale.ROOT);
+    }
+
+    public static Set<String> exactCategories(String name,String itemId,List<String> lore) {
+        Set<String> categories = new LinkedHashSet<>();
+        if(lore==null || lore.isEmpty())return categories;
+        List<String> normalized = lore.stream().map(WikiPreset::normal).toList();
+        for(CatalogEntry e:BY_NAME.getOrDefault(normal(name),List.of())){
+            if(!e.category.equals("Pets") && Objects.equals(e.itemId,itemId)
+               && e.lore.stream().map(WikiPreset::normal).toList().equals(normalized)) categories.add(e.category);
+        }
+        return categories;
     }
 
     /** Returns Unsorted on genuinely ambiguous matches, never guesses a category from the item material. */
