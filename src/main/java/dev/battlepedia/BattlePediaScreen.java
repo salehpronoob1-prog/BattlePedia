@@ -23,7 +23,7 @@ public final class BattlePediaScreen extends Screen {
     String section="Home",expandedGroup="",query="",selectedKey="",selectedRarity="";
     String notice="Browse the BattlePet encyclopedia";
     int navScroll=0,browserScroll=0,abilityScroll=0,loreScroll=0;
-    double browserOffset=0;
+    double browserOffset=0, abilityOffset=0, loreOffset=0;
     int compactTab=0;
     boolean maximized=false,mobileLore=false;
     int left,top,widthPx,heightPx,sideWidth,mainX,mainWidth,headerHeight,bodyTop,bodyBottom;
@@ -109,7 +109,19 @@ public final class BattlePediaScreen extends Screen {
     }
     private void invalidate(){results=null;}
     private void resetBrowser(){browserScroll=0;browserOffset=0;}
-    private void animate(){transition=System.nanoTime();}
+    private void animate(){transition=System.nanoTime();abilityOffset=abilityScroll*18.0;loreOffset=loreScroll*14.0;}
+    void toggleGroup(String group){expandedGroup=expandedGroup.equals(group)?"":group;animate();}
+    int detailScrollPixels(boolean lore,int max){
+        int step=lore?14:18;
+        int target=Math.clamp(lore?loreScroll:abilityScroll,0,max)*step;
+        if(lore)loreScroll=target/step;else abilityScroll=target/step;
+        double current=lore?loreOffset:abilityOffset;
+        current=prefs.animation==0?target:current+(target-current)*Math.min(1,frameMs/Math.max(1,prefs.duration(65)));
+        current=Math.clamp(current,0,max*step);
+        if(lore)loreOffset=current;else abilityOffset=current;
+        return (int)Math.round(current);
+    }
+    void nextRarity(){var choices=selectedVariants();if(choices.isEmpty())return;for(int i=0;i<choices.size();i++)if(resolvedRarity(choices.get(i)).equals(selectedRarity)){chooseRarity(resolvedRarity(choices.get((i+1)%choices.size())));return;}chooseRarity(resolvedRarity(choices.getFirst()));}
     void chooseSection(String value){
         section=value;
         if(WikiCategories.ALL.stream().anyMatch(c->c.name().equals(value)))WikiCapture.setCategory(value);
@@ -226,7 +238,7 @@ public final class BattlePediaScreen extends Screen {
         int mx=(int)mouseX,my=(int)mouseY,amount=vertical>0?-1:1;
         if(mx<left||mx>=left+widthPx||my<top||my>=top+heightPx)return false;
         if(mx<left+sideWidth){navScroll=Math.max(0,navScroll+amount);return true;}
-        if(view==View.BROWSE&&my>=bodyTop&&my<bodyBottom){browserScroll=Math.max(0,browserScroll+amount);return true;}
+        if((view==View.BROWSE||view==View.HOME)&&my>=bodyTop&&my<bodyBottom){browserScroll=Math.max(0,browserScroll+amount);return true;}
         if(view==View.DETAIL&&my>=bodyTop&&my<bodyBottom){
             if(PediaRenderer.compactDetail(this)){
                 if(mobileLore)loreScroll=Math.max(0,loreScroll+amount*2);
