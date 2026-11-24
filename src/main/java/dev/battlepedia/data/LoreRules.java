@@ -46,7 +46,7 @@ public final class LoreRules {
     public static CatalogEntry copy(CatalogEntry e,String category) {
         CatalogEntry c=new CatalogEntry();
         c.name=e.name;c.category=category;c.rarity=e.rarity;c.itemId=e.itemId;
-        c.stackJson=e.stackJson;c.lore=e.lore;c.source=e.source;c.originalSlot=e.originalSlot;c.count=e.count;
+        c.stackJson=e.stackJson;c.lore=e.lore;c.source=e.source;c.originalSlot=e.originalSlot;c.count=e.count;c.capturedAt=e.capturedAt;
         return c;
     }
 
